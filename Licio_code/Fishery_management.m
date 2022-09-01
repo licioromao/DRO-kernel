@@ -14,7 +14,7 @@ L = 200; % Biomass limit
 r = 1; % per-capita recruitment 
 C = 70; % Maximum target catch
 
-No_MonteCarlo = 800; % Number of BLABLA
+No_MonteCarlo = 50; % Number of BLABLA
     
 % All distributions are considered Gaussian with the parameters given as
 % below
@@ -77,17 +77,18 @@ param.MC = No_MonteCarlo;
 
 %% Partitioning the state space
 
-No_partition = [20,20,33]; % Define the number of points at each dimensional of the state space
+No_partition = [3,3,3]; % Define the number of points at each dimensional of the state space
+param.NumberOfPartitions = No_partition;
 %Noise = generateNoise(param);
 
-Grid = generatePartition(No_partition,param.SafeSet); % Generate the partition of the state space
-List = createList(Grid); % List containing labels for the discrete states of the discretazation
+Grid = StatePartition(No_partition,param.SafeSet); % Generate the partition of the state space
+List = Grid.createList; % List containing labels for the discrete states of the discretazation
 
 param.List = List;
-param.sizePartition = getSizePartition(Grid);
+param.sizePartition = Grid.getSizePartition;
 
 %% Generating the transition probability
-TransitionProb = EstimateTransition(@vector_field,Grid,InputPartition,param); 
+TransitionProb = EstimateTransition(Grid,InputPartition,param); 
 
 param.TransitionProb = TransitionProb;
 
@@ -97,7 +98,7 @@ NumberOfPoints = No_partition(1)*No_partition(2)*No_partition(3); % number of po
 valueFunction = zeros(NumberOfPoints + 1,N+1); % initializing the variable to store the value function
 OptInput = zeros(NumberOfPoints + 1,N+1); % initializing the variable to store the optimal input
 
-IndexSafeAndReachSet = getIndexReachAvoid(Grid,param); % getting index of the safe and reach set
+IndexSafeAndReachSet = getIndexReachAvoid(Grid.getValues,param); % getting index of the safe and reach set
 
 param.IndexSafeAndReachSet = IndexSafeAndReachSet; % adding the index to the param structure
 
@@ -113,7 +114,7 @@ fprintf('Total of iterations: %d \n',total_iterations);
 for i = N:-1:final
     NextValueFunc = valueFunction(:,i+1); % saving in a temporary variable the value function of the next step
     parfor j = 1:NumberOfPoints % iterates over the number of points
-        x = Grid.grid_x(j,:)'; % getting the current state to be updated
+        x = Grid.getValues.grid_x(j,:)'; % getting the current state to be updated
         tempValueFunc = zeros(NumberInputs,1);
         for uCounter = 1:NumberInputs
             u = InputPartition(uCounter,:)'; % iterating over the number of inputs
@@ -134,9 +135,9 @@ end
 close all
 
 InitialState_X3 = 750;
-InitialState_X3 = Grid.X3(1,1,find(Grid.X3(1,1,:) <= InitialState_X3,1,'last'));
+InitialState_X3 = Grid.getValues.X3(1,1,find(Grid.getValues.X3(1,1,:) <= InitialState_X3,1,'last'));
 
-[XX,YY,ProjValueFunc,OptPolicy] = plot_results(InitialState_X3,valueFunction(:,1),OptInput(:,1),Grid,param);
+[XX,YY,ProjValueFunc,OptPolicy] = plot_results(InitialState_X3,valueFunction(:,1),OptInput(:,1),Grid.getValues,param);
 
 levels = [0.1,0.2,0.4,0.5,0.6,0.8,0.85,0.9,1];
 
@@ -175,185 +176,7 @@ pcolor(XX,YY,OptPolicy)
 % figure 
 % h = contour(XX,YY,ProjValueFunc,levels,'ShowText','on','LineWidth',2);
 
-
-%% User-defined functions that define the vector field
-
-function out = vector_field_R(x,param)
-
-% This function implements the function R that composes the vector field,
-% as given in the first column of page 1956 of the paper mentioned at the
-% top of this file.
-
-% Inputs:   x - current state
-%           param - this is a structure that contains the field r and L
-
-r = param.r;
-L = param.L;
-
-out = max(0,r*x*(1-(x/L))); % output of the function
-end
-
-function [out,mode] = vector_field_C(x,d,delta,param)
-
-% This function implements the function C as shown in page 1956 of the
-% paper at the top of this file.
-
-%  Inputs: x - current state
-%          d - represents the input of the dynamics
-%          delta - is the variability of the catch
-%          param -  is a structure containing L and C as fields
-%
-%  Output: out - value of the expression
-%          mode - mode of the system. Note that this system has two modes,
-%          according to the value of the current state and L
-%
-
-L = param.L;
-C = param.C;
-
-if x < L % if x is less than L
-    out = delta*d*C*x/L;
-    mode = 1;
-else % otherwise
-    out = delta*d*C;
-    mode = 2;
-end
-
-end
-
-function out = vector_field_E(x1,x2,d,v,delta,param)
-
-% This function implements the function E as shown in page 1956 of the
-% paper at the top of this file.
-
-% Inputs: x1,x2 -  fish biomass in each patch
-%         d - represents the input of the dynamics
-%         delta - is the variability of the catch
-%         v - natural fish mortality
-%         param - is a structure containing L and C as fields
-
-out = (1-v)*x1 - vector_field_C(x1+x2,d,delta,param); % output of this expression as shown in the paper
-
-end
-
-function out = vector_field_M(x1,x2,d1,d2,v1,v2,delta1,delta2,param)
-
-% This function implements the function M as shown in page 1956 of the
-% paper at the top of this file, which represents the fish escapament
-% between patch at a given period
-
-% Inputs: x1,x2 -  fish biomass in each patch
-%         d1,d2 - represents the inputs for each patch 
-%         delta1,delta2 - is the catch variability in each patch
-%         v1,v2 - natural fish mortality in each patch
-%         param - is a structure containing L and C as fields
-
-
-temp_1 = vector_field_E(x1,x2,d1,v1,delta1,param);
-temp_2 = vector_field_E(x2,x1,d2,v2,delta2,param);
-
-out = temp_1 - temp_2;
-end
-
-function out = generateNoise(param)
-
-% This function generates the noise that acts on the dynamics of the system.
-
-% Input: param - structure containing the distributions associated with any
-% source of noise in the systems
-
-out = [random(param.v,2,1);random(param.gamma,2,1);random(param.lambda);random(param.delta,2,1)];
-
-end
-
-function out = vector_field(CurrentState,Input,Noise,param)
-
-% Equation (14)-(16) of the paper mentioned at the top of this file.
-
-% Input: Noise - a 7-dimensional vector containing the sources of noise in
-%        the model
-%        Input - Control input   
-%        CurrentState - current state of the model
-%        param - is a structure that contains all the parameters of the
-%        model
-%
-% Output: out - next state of the model
-
-
-v1 = Noise(1);
-v2 = Noise(2);
-gamma1 = Noise(3);
-gamma2 = Noise(4);
-lambda = Noise(5);
-delta1 = Noise(6);
-delta2 = Noise(7);
-
-R1 = vector_field_R(CurrentState(1),param);
-R2 = vector_field_R(CurrentState(2),param);
-
-M = vector_field_M(CurrentState(1),CurrentState(2),Input(1),Input(2),v1,v2,delta1,delta2,param);
-
-[C1,mode] = vector_field_C(CurrentState(1)+CurrentState(2),Input(1),delta1,param);
-[C2,~] = vector_field_C(CurrentState(1)+CurrentState(2),Input(2),delta2,param);
-
-out = [(1-v1)*CurrentState(1) + gamma1*R1 - C1 - lambda*M; % Equation (14)
-        (1-v2)*CurrentState(2) + gamma2*R2 - C2 + lambda*M; % Equation (15)
-        CurrentState(3) + C1 + C2; % Equation (16)
-        mode]; % Mode of the system
-
-end
-
 %% Functions related to the partition and generating an estimate of the transition kernel
-
-function out = generatePartition(No_partition,SafeSet)
-
-% Generates a lattice partition of the state space, taking as limit the
-% safe set
-%
-% Input: No_Partition - a vector containing the number of points at each
-%                       state of the model
-%
-%        SafeSet - A 3x2 matrix with the limits of the safe set in each
-%                  dimension
-%
-% Output: out - is a structure with four fields as defined below:
-%               out.X1, out.X2, out.X3 -- multi-dimensional matrices of size No_Partition(1)
-%                                         x No_Partition(2) x No_Partition(3) containing the points
-%                                         of the generated lattice
-%               out.grid_x -- elements of the grid organized in a (No_Partition(1)
-%                                         x No_Partition(2) x
-%                                         No_Partition(3)) x 3 matrix
-% The field out.grid_x is used to assign labels to the discrete states of
-% the model.
-
-grid_x1 = linspace(SafeSet(1,1),SafeSet(1,2),No_partition(1));
-grid_x2 = linspace(SafeSet(2,1),SafeSet(2,2),No_partition(2));
-grid_x3 = linspace(SafeSet(3,1),SafeSet(3,2),No_partition(3));
-
-[X1,X2,X3] = meshgrid(grid_x1,grid_x2,grid_x3);
-
-Nx1 = size(X1,2);
-Nx2 = size(X1,1);
-Nx3 = size(X1,3);
-
-grid_x = zeros(Nx1*Nx2*Nx3,3);
-
-for i1 = 1:Nx1
-    for i2 = 1:Nx2
-        for i3 = 1:Nx3
-            x = [X1(i2,i1,i3);X2(i2,i1,i3);X3(i2,i1,i3)];
-            index = (i1-1)*Nx2*Nx3 + (i2-1)*Nx3 + i3;
-            grid_x(index,:) = x;
-        end
-    end
-end
-
-out.X1 = X1;
-out.X2 = X2;
-out.X3 = X3;
-out.grid_x = grid_x;
-
-end
 
 function out = generateInputPartition(Input)
 % This function generates a grid of size Nu^2 x 2 that contains any
@@ -372,105 +195,9 @@ function out = generateInputPartition(Input)
 
 end
 
-function out = createList(StatePartition)
-
-% This function creates a vector of array that contains the labels of the
-% states of the generated discrete model
-
-% Inputs: StatePartition -- this is the output of the function
-% generatePartition as defined above
-%
-% Ouput: out -- labels for the discrete states
-
-Nx1 = size(StatePartition.X1,2);
-Nx2 = size(StatePartition.X2,1);
-Nx3 = size(StatePartition.X3,3);
-
-out = {};
-
-for i1 = 1:Nx1
-    for i2 = 1:Nx2
-        for i3 = 1:Nx3
-            x = [StatePartition.X1(i2,i1,i3),StatePartition.X2(i2,i1,i3),StatePartition.X3(i2,i1,i3)];
-            out = [out;sprintf('(%.2f,%.2f,%.2f)',x(1),x(2),x(3))];
-        end
-    end
-end
-
-out = [out;'NaN']; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
-
-end
-
-function out = getSizePartition(Partition)
-
-% This function returns the granularity of the partition in each dimension.
-% Its input is the output of the function generatePartition.
-
-    h1 = Partition.X1(1,2,1) - Partition.X1(1,1,1);
-    h2 = Partition.X2(2,1,1) - Partition.X2(1,1,1);
-    h3 = Partition.X3(1,1,2) - Partition.X3(1,1,1);
-    
-    out = [h1;h2;h3];
-end
-
-function out = getElementPartition(x,Partition)
-
-% This function returns the element of the partition that x belongs to. If
-% the input x is outside the safe set, this function returns an empty
-% array.
-
- index = [find(Partition.X1(1,:,1) <= x(1),1,'last');
-        find(Partition.X2(:,1,1) <= x(2),1,'last');
-        find(Partition.X3(1,1,:) <= x(3),1,'last')]; % Check the element of the partition
-    
- if length(index) ~= 3 % If there is one dimensional for which index is empty, set out to empty array
-     index = [];
-     out = [];
- end
- 
- if ~isempty(index) % Otherwise, the function outputs a structure with index and xHat field
-     xHat = [Partition.X1(1,index(1),1);Partition.X2(index(2),1,1);Partition.X3(1,1,index(3));x(4)];
-     out.index = index;
-     out.x = xHat;
- end
- 
-end
-
-function out = getCenterPartition(x,sizePartition)
-
-% This function receives as input a point x in the lattice and returns the
-% center of the partition.
-
-out = zeros(4,1);
-
-out(1:3) = x(1:3) + sizePartition/2;
-out(4) = x(4);
-
-end
-
-function out = computeElementPartition(func,currentState,input,noise,Partition,param)
-
-% Given currentState, input and noise vectors, this function uses the
-% vector_field function to progate the dynamics and returns the element and
-% center of the partition corresponding to the next state.
-
-out.nextState = [];
-out.elementPartition = [];
-
-if ~isempty(func)
-    nextState = func(currentState,input,noise,param);
-    temp = getElementPartition(nextState,Partition);
-    out.elementPartition = temp.index;
-    out.nextState = getCenterPartition(temp.x,param.sizePartition);
-else
-    out.elementPartition = getElementPartition(currentState,Partition);
-end
-
-end
-
 %% Computing the transition probabilities
 
-function out = RunMonteCarlo(func,x,u,StatePartition,param)
+function out = RunMonteCarlo(x,u,Grid,param)
 
 % This function computes an estimate of the transition P(.|x,u) associated
 % with state partition.
@@ -489,6 +216,7 @@ function out = RunMonteCarlo(func,x,u,StatePartition,param)
 %                   computeElementPartition functions defined above
 %    This function also uses the Hashtable class function
 
+StatePartition = Grid.getValues;
 
 MC = param.MC; % Number of Monte Carlo simulation
 List = param.List; % Name of the discrete states of the MDP
@@ -501,7 +229,7 @@ for i = 1:MC % iterate over the number of simulations
     noise = generateNoise(param); % simulates a noise transition
     
     % Compute the associated element of the partition and store the index
-    temp = computeElementPartition(func,x,u,noise,StatePartition,param); 
+    temp = Grid.computeElementPartition(x,u,noise,param); 
     indexMemberPartition = temp.elementPartition;
     
     if ~isempty(indexMemberPartition) % if an element if found
@@ -524,11 +252,12 @@ out = hTable.createProbMeasure(); % computes the emperical probability distribut
 
 end
 
-function out = RunMonteCarloParallel(func,x,u,StatePartition,n_core,param)
+function out = RunMonteCarloParallel(x,u,Grid,n_core,param)
 
 % Exploits parallel computation using the RunMonteCarlo function defined
 % above. All the input parameters are defined in RunMonteCarlo definition.
 
+StatePartition = Grid.getValues;
 MC = param.MC; % number of Monte Carlo simulation
 tempMCParallel = round(MC/n_core); % rounding of parallel computation using the number of available cores
 MCParallel = zeros(n_core,1); 
@@ -554,7 +283,7 @@ temp = zeros(Nx1*Nx2*Nx3 + 1,n_core); % initilizating the variable that contains
 parfor i = 1:n_core
     tempParam = param;
     tempParam.MC = MCParallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
-    temp(:,i) = RunMonteCarlo(func,x,u,StatePartition,tempParam);
+    temp(:,i) = RunMonteCarlo(x,u,Grid,tempParam);
 end
 
 out = zeros(Nx1*Nx2*Nx3 + 1,1);
@@ -566,7 +295,7 @@ end
 
 end
 
-function out = EstimateTransition(func,StatePartition,InputPartition,param)
+function out = EstimateTransition(Grid,InputPartition,param)
 
 % Iterates over all state-action pair and compute the transition
 % probability.
@@ -587,6 +316,8 @@ function out = EstimateTransition(func,StatePartition,InputPartition,param)
 %                  Action -- String identifying the action
 %                  ProbMeasure -- an estimate of the transition probability
 %                  P(.|x,u)
+
+StatePartition = Grid.getValues;
 
 Nx1 = size(StatePartition.X1,2); % Number of points in the first dimension
 Nx2 = size(StatePartition.X1,1); % Number of points in the second dimension
@@ -616,7 +347,7 @@ for i1 = 1:Nx1
                     u = InputPartition(j,:); % selecting a particular allowable input
                     stringU = sprintf('(%.2f,%.2f)',u(1),u(2)); % creating the corresponding string
                     
-                    prob_xu = RunMonteCarlo(func,x,u,StatePartition,param); % empirical estimate of the transition probability
+                    prob_xu = RunMonteCarlo(x,u,Grid,param); % empirical estimate of the transition probability
                     
                     % saving the results
                     temp{j}.State = stringX; 
@@ -635,7 +366,7 @@ for i1 = 1:Nx1
                     u = InputPartition(j,:); % selecting a particular allowable input
                     stringU = sprintf('(%.2f,%.2f)',u(1),u(2)); % creating the corresponding string
                     
-                    prob_xu = RunMonteCarloParallel(func,x,u,StatePartition,100,param); % empirical estimate of the transition probability using parallel computation
+                    prob_xu = RunMonteCarloParallel(x,u,Grid,100,param); % empirical estimate of the transition probability using parallel computation
                     
                     % saving results
                     temp{j}.State = stringX;

@@ -103,6 +103,8 @@ function [ProbMeas,ObjFunc] = VerifyTwoArg(arg1,arg2)
             % probability measure. This is used to set values for the
             % private parameters of the object
             
+            tol = 1e-5;
+            
             if ~(isvector(arg1) && isvector(arg2) && ~ischar(arg1) && ~ischar(arg2))
                 error('Two of the inputs must be column or row vectors of real numbers')
             end
@@ -118,7 +120,7 @@ function [ProbMeas,ObjFunc] = VerifyTwoArg(arg1,arg2)
             
             % Checking whether there exists a prob measure amongst the
             % inputs; otherwise, ouput an error
-            if (isempty(find(arg1 < 0)) && sum(arg1) == 1) || (isempty(find(arg2 < 0)) && sum(arg2) == 1) 
+            if (isempty(find(arg1 < 0)) && (abs(sum(arg1) - 1) <= tol)) || (isempty(find(arg2 < 0)) && (abs(sum(arg2) - 1) <= tol))
                 if isempty(find(arg1 < 0)) && sum(arg1) == 1
                     ProbMeas = arg1;
                     ObjFunc = arg2;
