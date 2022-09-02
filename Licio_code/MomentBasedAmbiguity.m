@@ -87,7 +87,6 @@ classdef MomentBasedAmbiguity < Ambiguity
             % based on the paper by Insoon Yang mentioned at the top of
             % this file
             
-            n = size(obj.supportSet,1); % dimension of the space from which the random variable take value
             m = size(obj.supportSet,2); % number of samples
             
             x = sdpvar(m,1); % optimization variable -> this will result in the optimal distribution
@@ -274,18 +273,18 @@ end
 % Error if the dimension of ObjFunc is not equal to the columns of the
 % SupportSet
 if length(ObjFunc) ~= size(SupportSet,2)
-    error('The dimension of the cost function must be equal to the number of samples');
+    error('The dimension of the cost function must be equal to size of the support set');
 end
 
 % Converting MeanCenter into column vector if necessary
 if ~isempty(MeanCenter) && size(MeanCenter,1) == 1
     MeanCenter = MeanCenter';
 end
-
-% Checking whether MeanCenter is a probability measure
-if sum(MeanCenter < 0) ~= 0 || abs(sum(MeanCenter) - 1) > tol 
-    error('The mean center must be a probability vector')    
-end
+% 
+% % Checking whether MeanCenter is a probability measure
+% if sum(MeanCenter < 0) ~= 0 || abs(sum(MeanCenter) - 1) > tol 
+%     error('The mean center must be a probability vector')    
+% end
 
 end
 
@@ -351,7 +350,7 @@ function out = CheckPSDandSymmetric(arg1)
 
 tol = 1e-5;
 
-if norm(arg1 - arg1') < tol && min(real(eig(arg1))) > tol && (ismatrix(arg1) && (size(arg1,1) == size(arg1,2)))
+if norm(arg1 - arg1') < tol && min(real(eig(arg1))) > -tol && (ismatrix(arg1) && (size(arg1,1) == size(arg1,2)))
     out = true;
 else
     error('The matrix must be square, symmetric and PSD')

@@ -9,7 +9,7 @@
 
 %% Model parameters 
 
-N = 10; % Time horizon of the reach-avoid property
+N = int16(6); % Time horizon of the reach-avoid property
 L = 200; % Biomass limit
 r = 1; % per-capita recruitment 
 C = 70; % Maximum target catch
@@ -77,7 +77,7 @@ param.MC = No_MonteCarlo;
 
 %% Partitioning the state space
 
-No_partition = [3,3,3]; % Define the number of points at each dimensional of the state space
+No_partition = [6,6,6]; % Define the number of points at each dimensional of the state space
 param.NumberOfPartitions = No_partition;
 %Noise = generateNoise(param);
 
@@ -93,60 +93,39 @@ TransitionProb = EstimateTransition(Grid,InputPartition,param);
 param.TransitionProb = TransitionProb;
 
 %% Value function computation
+tic
+ValueFuncNoAmbiguity = ComputeValueFunction(param,'NoAmbiguity');
 
-NumberOfPoints = No_partition(1)*No_partition(2)*No_partition(3); % number of points of the value function
-valueFunction = zeros(NumberOfPoints + 1,N+1); % initializing the variable to store the value function
-OptInput = zeros(NumberOfPoints + 1,N+1); % initializing the variable to store the optimal input
+ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.getIndexReachAvoid(Grid.getValues); 
+ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.BackwardIteration(Grid,InputPartition);
+toc
 
-IndexSafeAndReachSet = getIndexReachAvoid(Grid.getValues,param); % getting index of the safe and reach set
+tic
+ValueFuncMoment = ComputeValueFunction(param,'MomentAmbiguity');
 
-param.IndexSafeAndReachSet = IndexSafeAndReachSet; % adding the index to the param structure
+ValueFuncMoment = ValueFuncMoment.getIndexReachAvoid(Grid.getValues); 
+ValueFuncMoment = ValueFuncMoment.BackwardIteration(Grid,InputPartition);
+toc
 
-valueFunction(IndexSafeAndReachSet.reachIndex,N+1) = 1; % initializing the value function on the reach set
 
-final = 1;
-
-% Creating a progress bar of the value function computation
-h = waitbar(0,'Initializing','Name','Computing Value Function...');
-total_iterations = (N-final)*NumberOfPoints*NumberInputs;
-fprintf('Total of iterations: %d \n',total_iterations);
-
-for i = N:-1:final
-    NextValueFunc = valueFunction(:,i+1); % saving in a temporary variable the value function of the next step
-    parfor j = 1:NumberOfPoints % iterates over the number of points
-        x = Grid.getValues.grid_x(j,:)'; % getting the current state to be updated
-        tempValueFunc = zeros(NumberInputs,1);
-        for uCounter = 1:NumberInputs
-            u = InputPartition(uCounter,:)'; % iterating over the number of inputs
-            tempValueFunc(uCounter) = iterateValueFunction(NextValueFunc,x,u,param); % getting the new value for the value function
-        end
-        [valueFunction(j,i),OptInput(j,i)] = max(tempValueFunc); % storing the optimal value function and policy
-    end
-    
-    % updating the progress bar
-    index = (N-i)*NumberOfPoints*NumberInputs + NumberOfPoints*NumberInputs;
-    waitbar(index/total_iterations,h,sprintf('%.5f completed',index/total_iterations));
-end
-
-%delete(h)
-%save
+save
 %% Below we try to plot the results for given values of the trid variable
 
-close all
-
-InitialState_X3 = 750;
-InitialState_X3 = Grid.getValues.X3(1,1,find(Grid.getValues.X3(1,1,:) <= InitialState_X3,1,'last'));
-
-[XX,YY,ProjValueFunc,OptPolicy] = plot_results(InitialState_X3,valueFunction(:,1),OptInput(:,1),Grid.getValues,param);
-
-levels = [0.1,0.2,0.4,0.5,0.6,0.8,0.85,0.9,1];
-
-figure 
-h = contour(XX,YY,ProjValueFunc,levels,'ShowText','on','LineWidth',2);
-
-
-figure
-pcolor(XX,YY,OptPolicy)
+% close all
+% 
+% InitialState_X3 = 750;
+% InitialState_X3 = Grid.getValues.X3(1,1,find(Grid.getValues.X3(1,1,:) <= InitialState_X3,1,'last'));
+% 
+% [XX,YY,ProjValueFunc,OptPolicy] = plot_results(InitialState_X3,valueFunction(:,1),OptInput(:,1),Grid.getValues,param);
+% 
+% levels = [0.1,0.2,0.4,0.5,0.6,0.8,0.85,0.9,1];
+% 
+% figure 
+% h = contour(XX,YY,ProjValueFunc,levels,'ShowText','on','LineWidth',2);
+% 
+% 
+% figure
+% pcolor(XX,YY,OptPolicy)
 
 
 % 
@@ -331,7 +310,6 @@ out = [];
 
 h = waitbar(0,'Initializing','Name','Generating Transition probabilities...'); % Plotting a bar to check the progress
 total_iterations = Nx1*Nx2*Nx3*Nu; % total number of remaining iterations
-n_core = 4; % number of cores. AJUST THIS PARAMETER ACCORDING TO YOUR COMPUTATIONAL POWER
 
 for i1 = 1:Nx1
     for i2 = 1:Nx2
@@ -379,116 +357,13 @@ for i1 = 1:Nx1
                 end
             end
             estimate_time = toc; % storing time for a single state-action pair estimate 
-            (estimate_time*(Nx1*Nx2*Nx3 - (i1-1)*Nx2*Nx3 - (i2-1)*Nx3 - i3))/(60*60*24) % estimate of the remaining time in days
+            %(estimate_time*(Nx1*Nx2*Nx3 - (i1-1)*Nx2*Nx3 - (i2-1)*Nx3 - i3))/(60*60*24) % estimate of the remaining time in days
             out = [out;temp];
         end
     end
 end
 
 delete(h) % deleting the progress bar
-
-end
-
-%% Computation of the value function
-
-function out = getIndexReachAvoid(StatePartition,param)
-
-% Retuns the indices of the safe and reach sets associated with the partition
-
-Nx1 = size(StatePartition.X1,2); 
-Nx2 = size(StatePartition.X1,1);
-Nx3 = size(StatePartition.X1,3);
-
-% Information about the safe and reach sets
-SafeSet = param.SafeSet;
-ReachSet = param.ReachSet;
-
-% Initializing the variables that will store the indices
-safeIndex = false(Nx1*Nx2*Nx3 +1,1);
-reachIndex = false(Nx1*Nx2*Nx3 + 1,1);
-
-% Iterating over states
-for i1 = 1:Nx1
-    for i2=1:Nx2
-        for i3=1:Nx3
-            x = [StatePartition.X1(i2,i1,i3);StatePartition.X2(i2,i1,i3);StatePartition.X3(i2,i1,i3)];  % current state
-            index = (i1-1)*Nx2*Nx3 + (i2-1)*Nx3 + i3;
-            
-            % if current state belongs to safe set, then set the
-            % corresponding index to true
-            if min(SafeSet(:,1) <= x) && min(x <= SafeSet(:,2)) 
-                safeIndex(index) = true;
-            else
-                safeIndex(index) = false;
-            end
-            
-            % do the same with the reach set
-            if min(ReachSet(:,1) <= x) && min(x <= ReachSet(:,2))
-                reachIndex(index) = true;
-            else
-                reachIndex(index) = false;
-            end
-        end
-    end
-end
-
-% The last state correspond to the unsafe state of the MDP, so we set to
-% false
-safeIndex(end) = false;
-reachIndex(end) = false;
-
-
-% saving the results
-out.safeIndex = safeIndex;
-out.reachIndex = reachIndex;
-
-end
-
-function out = valueFunctionH(x,u,Z,param)
-
-% Returns the value function for a given state-action pair (x,u) using the
-% value function at the next iteration (Z). Param is a structure with
-% fields necessary for all the subroutines (check each subroutine for this precise information)
-    
-TransitionProb = param.TransitionProb; % vector with the transition probability matrix
-L = length(TransitionProb); % number of states in the transition probability
-
-if length(Z) ~= length(TransitionProb{1}.ProbMeasure)
-    error('The dimension of the thrid argument is incorrect.') % outputs an error if L is inconsistent with the size of the input Z
-end
-
-stringX = sprintf('(%.2f,%.2f,%.2f)',x(1),x(2),x(3)); % creating the string of the current state
-stringU = sprintf('(%.2f,%.2f)',u(1),u(2)); % creating the string of the current action
-
-key = false;
-i = 1;
-
-% Searching for the correct transition probability
-while i <= L && ~key
-    if strcmp(TransitionProb{i}.State,stringX) && strcmp(TransitionProb{i}.Action,stringU) % if stringX and stringU matches with the information in the transition prob matrix
-        key = true;
-        out = TransitionProb{i}.ProbMeasure'*Z; % value function at the current state-action pair
-    end
-    i = i+1;
-end
-
-if ~key % outputs an error is there is no element in TransitionProb with the label (stringX,stringU)
-    error('The input-action pair is not a member of the transition probability')
-end
-
-end
-
-function out = iterateValueFunction(ValueFunc,CurrentState,Input,param)
-
-indexCurrentState = find(strcmp(param.List,sprintf('(%.2f,%.2f,%.2f)',CurrentState(1),CurrentState(2),CurrentState(3))));
-
-indexReachSet = param.IndexSafeAndReachSet.reachIndex;
-
-if indexReachSet(indexCurrentState)
-    out = 1;
-else
-    out = valueFunctionH(CurrentState,Input,ValueFunc,param);
-end
 
 end
 
