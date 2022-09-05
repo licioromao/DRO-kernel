@@ -56,7 +56,7 @@ classdef KLdivAmbiguity < DistanceBasedAmbiguity
             obj.OptRes.Nvar = length(depends(Constraints)); % number of optimisation variable (this needs to be doubled-checked)
             
             obj.OptRes.p = value(p);  % Optimal distribution
-            obj.OptRes.distance = kullbackleibler(value(p),obj.q); % optimal distance
+            obj.OptRes.opt_value = value(ObjFunc); % optimal value
             
             obj.p = value(p); % Optimal distribution
         end
@@ -74,7 +74,7 @@ classdef KLdivAmbiguity < DistanceBasedAmbiguity
                           
             obj.OptRes = [];
             
-            obj.OptRes.distance = kullbackleibler(obj.p,obj.q); % Computing the KL divergence distance  
+            obj.OptRes.opt_value = kullbackleibler(obj.p,obj.q); % Computing the KL divergence distance  
         end
         
     end

@@ -66,7 +66,7 @@ classdef WassersteinAmbiguity < DistanceBasedAmbiguity
             obj.OptRes.Nvar = length(depends(Constraints)); % number of optimisation variable (this needs to be doubled-checked)
             
             obj.OptRes.p = value(p); % Optimal distribution
-            obj.OptRes.distance = value(sum(sum(tempMatrix))); % optimal distance
+            obj.OptRes.opt_value = value(sum(sum(tempMatrix))); % optimal distance
             obj.OptRes.joint = value(x); % optimal joint distribution
             
             obj.p = value(p); % saving the result in the public property
@@ -114,7 +114,7 @@ classdef WassersteinAmbiguity < DistanceBasedAmbiguity
             
             obj.OptRes.Nvar = length(depends(Constraints)); % number of optimisation variable (this needs to be doubled-checked)
             
-            obj.OptRes.distance = value(sum(sum(tempMatrix))); % distance between the distributions 
+            obj.OptRes.opt_value = value(sum(sum(tempMatrix))); % distance between the distributions 
             obj.OptRes.joint = value(x); % optimal joint distrirbution (or optimal coupling)
         end
     end

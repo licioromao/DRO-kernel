@@ -100,16 +100,37 @@ ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.getIndexReachAvoid(Grid.getValues);
 ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.BackwardIteration(Grid,InputPartition);
 toc
 
-tic
-ValueFuncMoment = ComputeValueFunction(param,'MomentAmbiguity');
+% tic
+% ValueFuncMoment = ComputeValueFunction(param,'MomentAmbiguity');
+% 
+% ValueFuncMoment = ValueFuncMoment.getIndexReachAvoid(Grid.getValues); 
+% ValueFuncMoment = ValueFuncMoment.BackwardIteration(Grid,InputPartition);
+% toc
 
-ValueFuncMoment = ValueFuncMoment.getIndexReachAvoid(Grid.getValues); 
-ValueFuncMoment = ValueFuncMoment.BackwardIteration(Grid,InputPartition);
+% tic
+% ValueFuncWasserstein = ComputeValueFunction(param,'WassersteinAmbiguity');
+% 
+% ValueFuncWasserstein = ValueFuncWasserstein.getIndexReachAvoid(Grid.getValues); 
+% ValueFuncWasserstein = ValueFuncWasserstein.BackwardIteration(Grid,InputPartition);
+% toc
+
+tic
+ValueFuncKL = ComputeValueFunction(param,'KLdivAmbiguity');
+
+ValueFuncKL = ValueFuncKL.getIndexReachAvoid(Grid.getValues); 
+ValueFuncKL = ValueFuncKL.BackwardIteration(Grid,InputPartition);
 toc
 
+% tic
+% ValueFuncKernel = ComputeValueFunction(param,'KernelAmbiguity');
+% 
+% ValueFuncKernel = ValueFuncKernel.getIndexReachAvoid(Grid.getValues); 
+% ValueFuncKernel = ValueFuncKernel.BackwardIteration(Grid,InputPartition);
+% toc
 
-save
-exit
+FileName = getDateSaveFile();
+save(FileName);
+
 %% Below we try to plot the results for given values of the trid variable
 
 % close all
@@ -335,7 +356,7 @@ for i1 = 1:Nx1
                 end
                 
                 % The two lines below updates the progress bar
-                index = (i1-1)*Nx2*Nx3*Nu + (i2-1)*Nx3*Nu + (i3-1)*Nu + Nu; 
+                index = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],Nu,h); 
                 waitbar(index/total_iterations,h,sprintf('%.5f completed',index/total_iterations));
                 
             else % if number of MC simulation is larger than 100, we will leverage parallel computation

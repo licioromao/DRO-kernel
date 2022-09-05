@@ -41,7 +41,11 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
                 NextStatePartition = TempGrid.getValues.grid_x(TempIndex.elementPartition);
                 CenterNextState = TempIndex.nextState;
                 
-                SamplesX(:,i) = CenterNextState(1:3);
+                if isempty(CenterNextState)
+                    SamplesX(:,i) = -ones(3,1);
+                else
+                    SamplesX(:,i) = CenterNextState(1:3);
+                end
                 
                 key = BuildString(NextStatePartition);
                 tempXSum = tempXSum + FindIndex(key,obj.param.List,alpha);
@@ -56,7 +60,7 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             KernelMatrix = (KernelMatrix + KernelMatrix')/2;
                    
             
-            obj.OptRes = tempXSum'*obj.c + (1/obj.m)^2*sum(sum(KernelMatrix))*obj.epsilon;
+            obj.OptRes.opt_value = min(1,tempXSum'*obj.c + (1/obj.m)^2*sum(sum(KernelMatrix))*obj.epsilon);
             
 %             if obj.OptRes >= 1
 %                 error('Error on the computation of the value function. It cannot be larger than one!')
@@ -68,7 +72,7 @@ end
 function out = BuildString(key)
 
 if isempty(key)
-    out = 'NaN'
+    out = 'NaN';
 else
     out = sprintf('(%.2f,%.2f,%.2f)',key);
 end
@@ -93,7 +97,7 @@ while ~goal && i <= L
     i = i + 1;
 end
 
-if i == L+1
+if i == L+2
     error('Key not found. There should be an error in the code.')
 end
 

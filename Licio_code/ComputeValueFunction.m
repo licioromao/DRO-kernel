@@ -91,31 +91,33 @@ classdef ComputeValueFunction
                     
             % Creating a progress bar of the value function computation
             hh = waitbar(0,'Initializing','Name','Computing Value Function...');
-            total_iterations = (obj.N-1)*NumberOfPoints*NumberInputs;
+            total_iterations = double((obj.N)*NumberOfPoints*NumberInputs);
             fprintf('Total of iterations: %d \n',total_iterations);
             
             for i = obj.N:-1:1
                 NextValueFunc = obj.ValueFunction(:,i+1); % saving in a temporary variable the value function of the next step
                 ValueFunctionTemp = zeros(NumberOfPoints,1);
                 OptInputTemp = zeros(NumberOfPoints,1);
-                for j = 1:NumberOfPoints % iterates over the number of points
-                    % updating the progress bar
-                    index = (obj.N-i)*(NumberOfPoints - j)*NumberInputs + NumberInputs;
-                    waitbar(index/total_iterations,hh,sprintf('%.5f completed',index/total_iterations));
-                    
+                for j = 1:NumberOfPoints % iterates over the number of points                   
                     x = Grid_x(j,:)'; % getting the current state to be updated
                     tempValueFunc = zeros(NumberInputs,1);
                     parfor uCounter = 1:NumberInputs
                         u = InputPartition(uCounter,:)'; % iterating over the number of inputs
                         tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc); % getting the new value for the value function
                     end
+                    
+                    % Update waitbar
+                    iterates = RemainingIterations(2,[[obj.N-i+1;j],[obj.N;NumberOfPoints]],NumberInputs,hh);
+                    perc_iterates = iterates/total_iterations;
+                    waitbar(perc_iterates,hh,sprintf('%.5f completed',perc_iterates));
+                    
                     [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
                 end
                 
                 obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
                 obj.OptInput(1:end -1,i) = OptInputTemp;
             end
-            delete(hh)
+            close(hh)
         end
         
         function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc)
@@ -155,28 +157,29 @@ classdef ComputeValueFunction
             while i <= L && ~key
                 if strcmp(TransitionProb{i}.State,stringX) && strcmp(TransitionProb{i}.Action,stringU) % if stringX and stringU matches with the information in the transition prob matrix
                     key = true;
+                    ObjFunc = NextValueFunc;
                     switch obj.AmbiguityType
                         case 'NoAmbiguity'
-                            out = TransitionProb{i}.ProbMeasure'*NextValueFunc; % value function at the current state-action pair
+                            out = TransitionProb{i}.ProbMeasure'*ObjFunc; % value function at the current state-action pair
                         case 'MomentAmbiguity'
-                            ObjFunc = NextValueFunc;
-                            [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{i}.ProbMeasure,TempPartition.getValues.grid_x);
+                            [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{i}.ProbMeasure,TempPartition.getValues.grid_x,'WithSigma');
                             rhoMu = 2; rhoSigma = 10;
-                            OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);
-                            tic
-                            OptPro = OptPro.SolveOptimizationDual;
-                            toc
-                            if (OptPro.OptRes.SolverStatus.problem == 0) || (OptPro.OptRes.SolverStatus.problem == 4)
-                                out = OptPro.OptRes.opt_value;
-                            else
-                                error('Unfeasible optimization problem')
-                            end
+                            OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);  
+                            out = AnalyseResults(OptPro,obj.AmbiguityType);
                         case 'WassersteinAmbiguity'
-                            OptPro = WassersteinAmbiguity();
+                            ep = 0.1; CenterBall = TransitionProb{i}.ProbMeasure;
+                            OptPro = WassersteinAmbiguity(ep,ObjFunc,CenterBall);
+                            out = AnalyseResults(OptPro,obj.AmbiguityType);
                         case 'KernelAmbiguity'
-                            OptPro = KernelBasedAmbiguity();
+                            ep = 0.1; CenterBall = TransitionProb{i}.ProbMeasure;
+                            OptPro = KernelBasedAmbiguity(ep,ObjFunc,CenterBall);
+                            OptPro.gamma = 5;  OptPro.CurrentState = x;
+                            OptPro.Input = u; OptPro.m = 1000; OptPro.param = obj.param;
+                            out = AnalyseResults(OptPro,obj.AmbiguityType)
                         case 'KLdivAmbiguity'
-                            OptPro = KLdivAmbiguity();
+                            ep = 0.01; CenterBall = TransitionProb{i}.ProbMeasure;
+                            OptPro = KLdivAmbiguity(ep,ObjFunc,CenterBall);
+                            out = AnalyseResults(OptPro,obj.AmbiguityType);
                         otherwise
                             error('This type of ambiguity has not been implemented. Please change the field AmbiguityType to a valid type.');
                     end
@@ -195,7 +198,7 @@ classdef ComputeValueFunction
 end
 
 
-function [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(Prob,Partition)
+function [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(Prob,Partition,type)
 
 SupportSet = Partition';
 SupportSet = [SupportSet,[-1;-1;-1]];
@@ -204,16 +207,36 @@ mu = SupportSet*Prob;
 
 M = 1000;
 
-samples = discretesample(Prob,M);
-sumSigma = zeros(3,3);
+if strcmp(type,'WithSigma')
+    samples = discretesample(Prob,M);
+    sumSigma = zeros(3,3);
 
-for i =1:M
-    x = SupportSet(:,samples(i));
-    temp = x - mu;
-    sumSigma = temp*temp' + sumSigma;
+    for i =1:M
+        x = SupportSet(:,samples(i));
+        temp = x - mu;
+        sumSigma = temp*temp' + sumSigma;
+    end
+
+    Sigma = sumSigma/M;
+else
+    Sigma = [];
 end
 
-Sigma = sumSigma/M;
+end
+
+function value = AnalyseResults(ObjAmbiguity,type)
+
+ObjAmbiguity = ObjAmbiguity.SolveOptimization;
+
+if strcmp(type,'KernelAmbiguity')
+    value = ObjAmbiguity.OptRes.opt_value;
+else
+    if (ObjAmbiguity.OptRes.SolverStatus.problem == 0) || (ObjAmbiguity.OptRes.SolverStatus.problem == 4)
+        value = ObjAmbiguity.OptRes.opt_value;
+    else
+        error('There is a problem when solving the optimization problem')
+    end
+end
 
 end
 
