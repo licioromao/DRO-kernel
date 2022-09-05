@@ -90,7 +90,7 @@ classdef ComputeValueFunction
             Grid_x = StatePartitionObj.getValues.grid_x;
                     
             % Creating a progress bar of the value function computation
-            h = waitbar(0,'Initializing','Name','Computing Value Function...');
+            hh = waitbar(0,'Initializing','Name','Computing Value Function...');
             total_iterations = (obj.N-1)*NumberOfPoints*NumberInputs;
             fprintf('Total of iterations: %d \n',total_iterations);
             
@@ -99,9 +99,13 @@ classdef ComputeValueFunction
                 ValueFunctionTemp = zeros(NumberOfPoints,1);
                 OptInputTemp = zeros(NumberOfPoints,1);
                 for j = 1:NumberOfPoints % iterates over the number of points
+                    % updating the progress bar
+                    index = (obj.N-i)*(NumberOfPoints - j)*NumberInputs + NumberInputs;
+                    waitbar(index/total_iterations,hh,sprintf('%.5f completed',index/total_iterations));
+                    
                     x = Grid_x(j,:)'; % getting the current state to be updated
                     tempValueFunc = zeros(NumberInputs,1);
-                    for uCounter = 1:NumberInputs
+                    parfor uCounter = 1:NumberInputs
                         u = InputPartition(uCounter,:)'; % iterating over the number of inputs
                         tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc); % getting the new value for the value function
                     end
@@ -110,12 +114,8 @@ classdef ComputeValueFunction
                 
                 obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
                 obj.OptInput(1:end -1,i) = OptInputTemp;
-                
-                % updating the progress bar
-                index = (obj.N-i)*NumberOfPoints*NumberInputs + NumberOfPoints*NumberInputs;
-                waitbar(index/total_iterations,h,sprintf('%.5f completed',index/total_iterations));
             end
-            delete(h)
+            delete(hh)
         end
         
         function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc)
@@ -161,10 +161,10 @@ classdef ComputeValueFunction
                         case 'MomentAmbiguity'
                             ObjFunc = NextValueFunc;
                             [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{i}.ProbMeasure,TempPartition.getValues.grid_x);
-                            rhoMu = 3; rhoSigma = 3;
+                            rhoMu = 2; rhoSigma = 10;
                             OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);
                             tic
-                            OptPro = OptPro.SolveOptimization;
+                            OptPro = OptPro.SolveOptimizationDual;
                             toc
                             if (OptPro.OptRes.SolverStatus.problem == 0) || (OptPro.OptRes.SolverStatus.problem == 4)
                                 out = OptPro.OptRes.opt_value;

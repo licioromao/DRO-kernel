@@ -97,7 +97,7 @@ classdef MomentBasedAmbiguity < Ambiguity
             % moments
             Constraints = [Constraints, abs(obj.supportSet*x - obj.mu)  <= obj.rhoMu];
             temp = (obj.supportSet - obj.mu);
-            Constraints = [Constraints, temp*diag(x)*temp' <= obj.rhoSigma*obj.sigma];
+            Constraints = [Constraints, norm(temp*diag(x)*temp'-obj.sigma,2) <= obj.rhoSigma];
             
             options = sdpsettings('solver','mosek','verbose',0); % setting properties to solve the optimization variable
             

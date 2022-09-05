@@ -9,7 +9,7 @@
 
 %% Model parameters 
 
-N = int16(6); % Time horizon of the reach-avoid property
+N = int16(3); % Time horizon of the reach-avoid property
 L = 200; % Biomass limit
 r = 1; % per-capita recruitment 
 C = 70; % Maximum target catch
@@ -77,7 +77,7 @@ param.MC = No_MonteCarlo;
 
 %% Partitioning the state space
 
-No_partition = [6,6,6]; % Define the number of points at each dimensional of the state space
+No_partition = [4,4,4]; % Define the number of points at each dimensional of the state space
 param.NumberOfPartitions = No_partition;
 %Noise = generateNoise(param);
 
@@ -109,6 +109,7 @@ toc
 
 
 save
+exit
 %% Below we try to plot the results for given values of the trid variable
 
 % close all
