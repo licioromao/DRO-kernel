@@ -97,7 +97,7 @@ classdef MomentBasedAmbiguity < Ambiguity
             % moments
             Constraints = [Constraints, abs(obj.supportSet*x - obj.mu)  <= obj.rhoMu];
             temp = (obj.supportSet - obj.mu);
-            Constraints = [Constraints, norm(temp*diag(x)*temp'-obj.sigma,2) <= obj.rhoSigma];
+            Constraints = [Constraints, temp*diag(x)*temp'<= obj.rhoSigma*obj.sigma];
             
             options = sdpsettings('solver','mosek','verbose',0); % setting properties to solve the optimization variable
             
@@ -167,7 +167,7 @@ classdef MomentBasedAmbiguity < Ambiguity
             obj.OptRes.Nvar = length(depends(Constraints)); % number of optimisation variable (this needs to be doubled-checked)
             
             obj.OptRes.p = [];
-            fprintf('In this formulation, we cannot recover the value of the optimal distribution \n');
+            %fprintf('In this formulation, we cannot recover the value of the optimal distribution \n');
             
             obj.OptRes.opt_value = value(-objective);
         end

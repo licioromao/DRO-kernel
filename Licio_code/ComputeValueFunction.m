@@ -101,9 +101,9 @@ classdef ComputeValueFunction
                 for j = 1:NumberOfPoints % iterates over the number of points                   
                     x = Grid_x(j,:)'; % getting the current state to be updated
                     tempValueFunc = zeros(NumberInputs,1);
-                    parfor uCounter = 1:NumberInputs
+                    for uCounter = 1:NumberInputs
                         u = InputPartition(uCounter,:)'; % iterating over the number of inputs
-                        tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc); % getting the new value for the value function
+                        tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
                     end
                     
                     % Update waitbar
@@ -120,7 +120,7 @@ classdef ComputeValueFunction
             close(hh)
         end
         
-        function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc)
+        function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc,StatePartitionObj)
             
             indexCurrentState = strcmp(obj.param.List,sprintf('(%.2f,%.2f,%.2f)',CurrentState(1),CurrentState(2),CurrentState(3)));
             
@@ -129,12 +129,12 @@ classdef ComputeValueFunction
             if indexReachSet(indexCurrentState)
                 out = 1;
             else
-                out = obj.InnerOptimization(CurrentState,Input,NextValueFunc);
+                out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj);
             end
             
         end
         
-        function out = InnerOptimization(obj,x,u,NextValueFunc)
+        function out = InnerOptimization(obj,x,u,NextValueFunc,StatePartitionObj)
             
             % Returns the value function for a given state-action pair (x,u) using the
             % value function at the next iteration (NextValueFunc). 
@@ -163,23 +163,23 @@ classdef ComputeValueFunction
                             out = TransitionProb{i}.ProbMeasure'*ObjFunc; % value function at the current state-action pair
                         case 'MomentAmbiguity'
                             [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{i}.ProbMeasure,TempPartition.getValues.grid_x,'WithSigma');
-                            rhoMu = 2; rhoSigma = 10;
+                            rhoMu = 2; rhoSigma = 2;
                             OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);  
-                            out = AnalyseResults(OptPro,obj.AmbiguityType);
+                            out = AnalyseResults(OptPro,obj.AmbiguityType,[]);                        
                         case 'WassersteinAmbiguity'
                             ep = 0.1; CenterBall = TransitionProb{i}.ProbMeasure;
                             OptPro = WassersteinAmbiguity(ep,ObjFunc,CenterBall);
-                            out = AnalyseResults(OptPro,obj.AmbiguityType);
+                            out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                         case 'KernelAmbiguity'
                             ep = 0.1; CenterBall = TransitionProb{i}.ProbMeasure;
                             OptPro = KernelBasedAmbiguity(ep,ObjFunc,CenterBall);
                             OptPro.gamma = 5;  OptPro.CurrentState = x;
-                            OptPro.Input = u; OptPro.m = 1000; OptPro.param = obj.param;
-                            out = AnalyseResults(OptPro,obj.AmbiguityType)
+                            OptPro.Input = u; OptPro.m = 50; OptPro.param = obj.param;
+                            out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj);
                         case 'KLdivAmbiguity'
                             ep = 0.01; CenterBall = TransitionProb{i}.ProbMeasure;
                             OptPro = KLdivAmbiguity(ep,ObjFunc,CenterBall);
-                            out = AnalyseResults(OptPro,obj.AmbiguityType);
+                            out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                         otherwise
                             error('This type of ambiguity has not been implemented. Please change the field AmbiguityType to a valid type.');
                     end
@@ -224,13 +224,13 @@ end
 
 end
 
-function value = AnalyseResults(ObjAmbiguity,type)
-
-ObjAmbiguity = ObjAmbiguity.SolveOptimization;
+function value = AnalyseResults(ObjAmbiguity,type,StatePartitionObj)
 
 if strcmp(type,'KernelAmbiguity')
+    ObjAmbiguity = ObjAmbiguity.SolveOptimization(StatePartitionObj);
     value = ObjAmbiguity.OptRes.opt_value;
 else
+    ObjAmbiguity = ObjAmbiguity.SolveOptimization;
     if (ObjAmbiguity.OptRes.SolverStatus.problem == 0) || (ObjAmbiguity.OptRes.SolverStatus.problem == 4)
         value = ObjAmbiguity.OptRes.opt_value;
     else

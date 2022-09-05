@@ -7,15 +7,15 @@
 % The code uses the functions defined at the bottom of this file as well as
 % the BLABLA
 
-%% Model parameters 
 
-N = int16(3); % Time horizon of the reach-avoid property
+
+function out = Fishery_management(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,AmbiguityTypes)
+
+%% Model parameters 
 L = 200; % Biomass limit
-r = 1; % per-capita recruitment 
+r = 1; % per-capita recruitment
 C = 70; % Maximum target catch
 
-No_MonteCarlo = 50; % Number of BLABLA
-    
 % All distributions are considered Gaussian with the parameters given as
 % below
 mu_v = 0.2; sigma_v = 0.1^2;
@@ -34,16 +34,16 @@ InputPartition = generateInputPartition(Input); % Generate a vector with all pos
 NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
 
 SafeSet = [0, 200;
-           0, 200;
-           0, 1200]; % Safe set
-       
-ReachSet = [100, 200; 
-            100, 200; 
-            800, 1200]; % Reach set
+    0, 200;
+    0, 1200]; % Safe set
+
+ReachSet = [100, 200;
+    100, 200;
+    800, 1200]; % Reach set
 
 % All the parameters of the model will be stored in the following structure
-        
-param.N = N;
+
+param.N = TimeHorizon;
 param.L = L;
 param.r = r;
 param.C = C;
@@ -54,82 +54,85 @@ param.delta = delta;
 param.v = v;
 param.lambda = lambda;
 param.gamma = gamma;
-param.MC = No_MonteCarlo;
-
-%%% Dynamical simulation
-
-% The implementation of the dynamics uses three user-defined functions that
-% can be found in the end of this .m file
- 
-% x = zeros(N_trajectories,N_steps + 1); 
-% input = zeros(N_trajectories,N_steps);
-% noise = zeros(N_trajectories,N_steps);
-% 
-% for ell = 1:N_trajectories
-%      temp = generateTrajec(@f,x0,N_steps,param);
-%      x(ell,:) = temp.x;
-%      input(ell,:) = temp.u;
-%      noise(ell,:) = temp.noise;
-% end
-
-
-% plot(X_scale,x) % Plot the generated trajectories
+param.MC = NumberOfMonteCarlo;
 
 %% Partitioning the state space
 
-No_partition = [4,4,4]; % Define the number of points at each dimensional of the state space
-param.NumberOfPartitions = No_partition;
+NumberOfPartitions = [2,2,2]; % Define the number of points at each dimensional of the state space
+param.NumberOfPartitions = NumberOfPartitions;
 %Noise = generateNoise(param);
 
-Grid = StatePartition(No_partition,param.SafeSet); % Generate the partition of the state space
+Grid = StatePartition(NumberOfPartitions,param.SafeSet); % Generate the partition of the state space
 List = Grid.createList; % List containing labels for the discrete states of the discretazation
 
 param.List = List;
 param.sizePartition = Grid.getSizePartition;
 
 %% Generating the transition probability
-TransitionProb = EstimateTransition(Grid,InputPartition,param); 
+TransitionProb = EstimateTransition(Grid,InputPartition,param);
 
 param.TransitionProb = TransitionProb;
-
 %% Value function computation
-tic
-ValueFuncNoAmbiguity = ComputeValueFunction(param,'NoAmbiguity');
 
-ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.getIndexReachAvoid(Grid.getValues); 
-ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.BackwardIteration(Grid,InputPartition);
-toc
+L = length(AmbiguityTypes);
 
-% tic
-% ValueFuncMoment = ComputeValueFunction(param,'MomentAmbiguity');
-% 
-% ValueFuncMoment = ValueFuncMoment.getIndexReachAvoid(Grid.getValues); 
-% ValueFuncMoment = ValueFuncMoment.BackwardIteration(Grid,InputPartition);
-% toc
+for i = 1:L
+    switch AmbiguityTypes{i}
+        case 'NoAmbiguity'
+            tic;
+            fprintf('\nComputing value function (without ambiguity)...\n')
+            ValueFuncNoAmbiguity = ComputeValueFunction(param,'NoAmbiguity');
+            
+            ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.getIndexReachAvoid(Grid.getValues);
+            ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.BackwardIteration(Grid,InputPartition);
+            fprintf('Done\n');
+            toc;
+        case 'MomentAmbiguity'
+            tic;
+            fprintf('\nComputing value function (moment ambiguity)...\n')
+            ValueFuncMoment = ComputeValueFunction(param,'MomentAmbiguity');
+            
+            ValueFuncMoment = ValueFuncMoment.getIndexReachAvoid(Grid.getValues);
+            ValueFuncMoment = ValueFuncMoment.BackwardIteration(Grid,InputPartition);
+            fprintf('Done\n');
+            toc;
+        case 'WassersteinAmbiguity'
+            fprintf('\nComputing value function (Wasserstein ambiguity)...\n')
+            tic;
+            ValueFuncWasserstein = ComputeValueFunction(param,'WassersteinAmbiguity');
+            
+            ValueFuncWasserstein = ValueFuncWasserstein.getIndexReachAvoid(Grid.getValues);
+            ValueFuncWasserstein = ValueFuncWasserstein.BackwardIteration(Grid,InputPartition);
+            fprintf('Done\n');
+            toc;
+        case 'KLdivAmbiguity'
+            fprintf('\nComputing value function (KL ambiguity)...\n')
+            tic;
+            ValueFuncKL = ComputeValueFunction(param,'KLdivAmbiguity');
+            
+            ValueFuncKL = ValueFuncKL.getIndexReachAvoid(Grid.getValues);
+            ValueFuncKL = ValueFuncKL.BackwardIteration(Grid,InputPartition);
+            fprintf('Done\n');
+            toc;
+        case 'KernelAmbiguity'
+            fprintf('\nComputing value function (Kernel ambiguity)...\n')
+            tic;
+            ValueFuncKernel = ComputeValueFunction(param,'KernelAmbiguity');
+            
+            ValueFuncKernel = ValueFuncKernel.getIndexReachAvoid(Grid.getValues);
+            ValueFuncKernel = ValueFuncKernel.BackwardIteration(Grid,InputPartition);
+            fprintf('Done\n');
+            toc;
+        otherwise
+            warning('%s has not been implemented. Jumping to the next string',AmbiguityTypes{i});
+    end
+end
 
-% tic
-% ValueFuncWasserstein = ComputeValueFunction(param,'WassersteinAmbiguity');
-% 
-% ValueFuncWasserstein = ValueFuncWasserstein.getIndexReachAvoid(Grid.getValues); 
-% ValueFuncWasserstein = ValueFuncWasserstein.BackwardIteration(Grid,InputPartition);
-% toc
+FileName = getDateSaveFile(NumberOfPartitions); % Getting the name of file based on the current date and time
+save(FileName); % saving the results in ./results/
+out = [];
 
-tic
-ValueFuncKL = ComputeValueFunction(param,'KLdivAmbiguity');
-
-ValueFuncKL = ValueFuncKL.getIndexReachAvoid(Grid.getValues); 
-ValueFuncKL = ValueFuncKL.BackwardIteration(Grid,InputPartition);
-toc
-
-% tic
-% ValueFuncKernel = ComputeValueFunction(param,'KernelAmbiguity');
-% 
-% ValueFuncKernel = ValueFuncKernel.getIndexReachAvoid(Grid.getValues); 
-% ValueFuncKernel = ValueFuncKernel.BackwardIteration(Grid,InputPartition);
-% toc
-
-FileName = getDateSaveFile();
-save(FileName);
+end
 
 %% Below we try to plot the results for given values of the trid variable
 

@@ -21,24 +21,22 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             obj.Input = [];
         end
                        
-        function obj = SolveOptimization(obj)
+        function obj = SolveOptimization(obj,ObjPartition)
             if isempty(obj.gamma) || isempty(obj.m) || isempty(obj.CurrentState) || isempty(obj.Input)
                 error('You must first initialize the gamma and m fiels of the object, as well as CurrentState and Input using the SetValue function');
             end
             
             GaussianKernel = @(x,y) exp(-obj.gamma*norm(x-y)^2); % This is too specific for the Gaussian Kernel
             
-            TempGrid = StatePartition(obj.param.NumberOfPartitions,obj.param.SafeSet);
             SamplesX = zeros(3,obj.m);
             KernelMatrix = zeros(obj.m,obj.m);
             alpha = obj.q;
             tempXSum = zeros(length(obj.param.List),1);
             
-            
-            for i=1:obj.m               
+            for i=1:obj.m
                 Noise = generateNoise(obj.param);
-                TempIndex = TempGrid.computeElementPartition(obj.CurrentState,obj.Input,Noise,obj.param);
-                NextStatePartition = TempGrid.getValues.grid_x(TempIndex.elementPartition);
+                TempIndex = ObjPartition.computeElementPartition(obj.CurrentState,obj.Input,Noise,obj.param);
+                NextStatePartition = ObjPartition.getValues.grid_x(TempIndex.elementPartition);
                 CenterNextState = TempIndex.nextState;
                 
                 if isempty(CenterNextState)
@@ -53,18 +51,17 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             
             for i=1:obj.m
                 for j=i:obj.m
-                    KernelMatrix(i,j) = GaussianKernel(SamplesX(:,i),SamplesX(:,j)); 
+                    KernelMatrix(i,j) = GaussianKernel(SamplesX(:,i),SamplesX(:,j));
                 end
             end
             
             KernelMatrix = (KernelMatrix + KernelMatrix')/2;
-                   
             
-            obj.OptRes.opt_value = min(1,tempXSum'*obj.c + (1/obj.m)^2*sum(sum(KernelMatrix))*obj.epsilon);
+            obj.OptRes.opt_value = max(0,1/obj.m*sum(tempXSum.*obj.c) - (obj.epsilon/obj.m)*sqrt(sum(sum(KernelMatrix))));
             
-%             if obj.OptRes >= 1
-%                 error('Error on the computation of the value function. It cannot be larger than one!')
-%             end
+            %             if obj.OptRes >= 1
+            %                 error('Error on the computation of the value function. It cannot be larger than one!')
+            %             end
         end
     end
 end
