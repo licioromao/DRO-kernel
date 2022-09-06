@@ -9,9 +9,18 @@
 
 
 
-function out = Fishery_management(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,AmbiguityTypes)
+function out = Fishery_management(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,AmbiguityTypes,FILE)
 
-%% Model parameters 
+TransitionProb = [];
+
+if nargin > 4
+    load(FILE,'TransitionProb')
+    load(FILE,'-regexp','ValueFunc*');
+else
+    FILE = [];
+end
+
+% Model parameters 
 L = 200; % Biomass limit
 r = 1; % per-capita recruitment
 C = 70; % Maximum target catch
@@ -56,9 +65,8 @@ param.lambda = lambda;
 param.gamma = gamma;
 param.MC = NumberOfMonteCarlo;
 
-%% Partitioning the state space
+% Partitioning the state space
 
-NumberOfPartitions = [2,2,2]; % Define the number of points at each dimensional of the state space
 param.NumberOfPartitions = NumberOfPartitions;
 %Noise = generateNoise(param);
 
@@ -68,73 +76,45 @@ List = Grid.createList; % List containing labels for the discrete states of the 
 param.List = List;
 param.sizePartition = Grid.getSizePartition;
 
-%% Generating the transition probability
-TransitionProb = EstimateTransition(Grid,InputPartition,param);
+% Generating the transition probability
+if isempty(TransitionProb) % only executes if TransitionPorb is empty
+    TransitionProb = EstimateTransition(Grid,InputPartition,param);
+end
 
 param.TransitionProb = TransitionProb;
-%% Value function computation
+% Value function computation
 
 L = length(AmbiguityTypes);
 
 for i = 1:L
     switch AmbiguityTypes{i}
         case 'NoAmbiguity'
-            tic;
-            fprintf('\nComputing value function (without ambiguity)...\n')
-            ValueFuncNoAmbiguity = ComputeValueFunction(param,'NoAmbiguity');
-            
-            ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.getIndexReachAvoid(Grid.getValues);
-            ValueFuncNoAmbiguity = ValueFuncNoAmbiguity.BackwardIteration(Grid,InputPartition);
-            fprintf('Done\n');
-            toc;
+            ValueFuncNoAmbiguity = MainValueFunctionIteration(Grid,InputPartition,AmbiguityTypes{i},exist('ValueFuncNoAmbiguity','var'),param);
         case 'MomentAmbiguity'
-            tic;
-            fprintf('\nComputing value function (moment ambiguity)...\n')
-            ValueFuncMoment = ComputeValueFunction(param,'MomentAmbiguity');
-            
-            ValueFuncMoment = ValueFuncMoment.getIndexReachAvoid(Grid.getValues);
-            ValueFuncMoment = ValueFuncMoment.BackwardIteration(Grid,InputPartition);
-            fprintf('Done\n');
-            toc;
+            ValueFuncMoment = MainValueFunctionIteration(Grid,InputPartition,AmbiguityTypes{i},exist('ValueFuncMoment','var'),param);
         case 'WassersteinAmbiguity'
-            fprintf('\nComputing value function (Wasserstein ambiguity)...\n')
-            tic;
-            ValueFuncWasserstein = ComputeValueFunction(param,'WassersteinAmbiguity');
-            
-            ValueFuncWasserstein = ValueFuncWasserstein.getIndexReachAvoid(Grid.getValues);
-            ValueFuncWasserstein = ValueFuncWasserstein.BackwardIteration(Grid,InputPartition);
-            fprintf('Done\n');
-            toc;
+            ValueFuncWasserstein = MainValueFunctionIteration(Grid,InputPartition,AmbiguityTypes{i},exist('ValueFuncWasserstein','var'),param);
         case 'KLdivAmbiguity'
-            fprintf('\nComputing value function (KL ambiguity)...\n')
-            tic;
-            ValueFuncKL = ComputeValueFunction(param,'KLdivAmbiguity');
-            
-            ValueFuncKL = ValueFuncKL.getIndexReachAvoid(Grid.getValues);
-            ValueFuncKL = ValueFuncKL.BackwardIteration(Grid,InputPartition);
-            fprintf('Done\n');
-            toc;
-        case 'KernelAmbiguity'
-            fprintf('\nComputing value function (Kernel ambiguity)...\n')
-            tic;
-            ValueFuncKernel = ComputeValueFunction(param,'KernelAmbiguity');
-            
-            ValueFuncKernel = ValueFuncKernel.getIndexReachAvoid(Grid.getValues);
-            ValueFuncKernel = ValueFuncKernel.BackwardIteration(Grid,InputPartition);
-            fprintf('Done\n');
-            toc;
+            ValueFuncKL = MainValueFunctionIteration(Grid,InputPartition,AmbiguityTypes{i},exist('ValueFuncKL','var'),param);
+        case 'KernelAmbiguity'  
+            ValueFuncKernel = MainValueFunctionIteration(Grid,InputPartition,AmbiguityTypes{i},exist('ValueFuncKernel','var'),param);
         otherwise
             warning('%s has not been implemented. Jumping to the next string',AmbiguityTypes{i});
     end
 end
 
-FileName = getDateSaveFile(NumberOfPartitions); % Getting the name of file based on the current date and time
-save(FileName); % saving the results in ./results/
+if nargin > 4
+    save(FILE);
+else
+    FileName = getDateSaveFile(NumberOfPartitions); % Getting the name of file based on the current date and time
+    save(FileName); % saving the results in ./results/
+end
+
 out = [];
 
 end
 
-%% Below we try to plot the results for given values of the trid variable
+% Below we try to plot the results for given values of the trid variable
 
 % close all
 % 
@@ -180,7 +160,7 @@ end
 % figure 
 % h = contour(XX,YY,ProjValueFunc,levels,'ShowText','on','LineWidth',2);
 
-%% Functions related to the partition and generating an estimate of the transition kernel
+%Functions related to the partition and generating an estimate of the transition kernel
 
 function out = generateInputPartition(Input)
 % This function generates a grid of size Nu^2 x 2 that contains any
@@ -199,7 +179,7 @@ function out = generateInputPartition(Input)
 
 end
 
-%% Computing the transition probabilities
+% Computing the transition probabilities
 
 function out = RunMonteCarlo(x,u,Grid,param)
 
@@ -346,6 +326,8 @@ for i1 = 1:Nx1
             if MC <= 100 % if number of MC simulations if less than 100 do not use parallel computation
                 
                 % Iterate over all possible input combination
+                Lastime = 0;
+                tic;
                 parfor j =1:Nu
                     u = InputPartition(j,:); % selecting a particular allowable input
                     stringU = sprintf('(%.2f,%.2f)',u(1),u(2)); % creating the corresponding string
@@ -357,10 +339,12 @@ for i1 = 1:Nx1
                     temp{j}.Action = stringU;
                     temp{j}.ProbMeasure = prob_xu;
                 end
+                Lastime = toc;
                 
                 % The two lines below updates the progress bar
                 index = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],Nu,h); 
-                waitbar(index/total_iterations,h,sprintf('%.5f completed',index/total_iterations));
+                SecToGo = (total_iterations - index)*Lastime;
+                waitbar(index/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',index/total_iterations,SecToGo));
                 
             else % if number of MC simulation is larger than 100, we will leverage parallel computation
                 
@@ -369,19 +353,22 @@ for i1 = 1:Nx1
                     u = InputPartition(j,:); % selecting a particular allowable input
                     stringU = sprintf('(%.2f,%.2f)',u(1),u(2)); % creating the corresponding string
                     
+                    Lastime = 0;
+                    tic;
                     prob_xu = RunMonteCarloParallel(x,u,Grid,100,param); % empirical estimate of the transition probability using parallel computation
-                    
+                    Lastime = toc;
                     % saving results
                     temp{j}.State = stringX;
                     temp{j}.Action = stringU;
                     temp{j}.ProbMeasure = prob_xu;
                     
                     % The two lines below updates the progress bar
-                    index = (i1-1)*Nx2*Nx3*Nu + (i2-1)*Nx3*Nu + (i3-1)*Nu + j;
-                    waitbar(index/total_iterations,h,sprintf('%.5f completed',index/total_iterations));
+                    index = RemainingIterations(3,[[i1;i2;i3;j],[Nx1;Nx2;Nx3;Nu]],1,h);
+                    SecToGo = (total_iterations - index)*Lastime;
+                    waitbar(index/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',index/total_iterations,SecToGo));
                 end
             end
-            estimate_time = toc; % storing time for a single state-action pair estimate 
+            %estimate_time = toc; % storing time for a single state-action pair estimate 
             %(estimate_time*(Nx1*Nx2*Nx3 - (i1-1)*Nx2*Nx3 - (i2-1)*Nx3 - i3))/(60*60*24) % estimate of the remaining time in days
             out = [out;temp];
         end
@@ -392,7 +379,7 @@ delete(h) % deleting the progress bar
 
 end
 
-%% Functions created to assist the plotting of the obtained results
+% Functions created to assist the plotting of the obtained results
 function [X,Y,ProjValueFunction,OptPolicy] = plot_results(Height,ValueFunction,OptInput,...
             StatePartition,param)
 
@@ -417,7 +404,60 @@ end
 end
 
 
+% Function that computes the value function
 
+function ValueFunc = MainValueFunctionIteration(PartitionObj,InputPartition,TypeOfAmbiguity,BooleanSignal,param)
+
+if ~BooleanSignal
+    switch TypeOfAmbiguity
+        case 'NoAmbiguity'
+            fprintf('\nComputing value function (without ambiguity)...\n')
+        case 'MomentAmbiguity'
+            fprintf('\nComputing value function (moment ambiguity)...\n')
+        case 'KernelAmbiguity'
+            fprintf('\nComputing value function (kernel ambiguity)...\n')
+        case 'KLdivAmbiguity'
+            fprintf('\nComputing value function (KL ambiguity)...\n')
+        case 'WassersteinAmbiguity'
+            fprintf('\nComputing value function (Wasserstein ambiguity)...\n')
+        otherwise
+            error('Type of Ambiguity not implemented')
+    end
+    
+    tic;
+    ValueFunc = ComputeValueFunction(param,TypeOfAmbiguity);
+    
+    ValueFunc = ValueFunc.getIndexReachAvoid(PartitionObj.getValues);
+    ValueFunc = ValueFunc.BackwardIteration(PartitionObj,InputPartition);
+    ValueFunc.time = toc;
+    
+    fprintf('Done\n');
+else
+    ValueFunc = [];
+    switch TypeOfAmbiguity
+        case 'NoAmbiguity'
+            warning('The variable %s already exists. Skipping to the next string...\n','ValueFuncNoAmbiguity');
+        case 'MomentAmbiguity'
+            warning('The variable %s already exists. Skipping to the next string...\n','ValueFuncMoment');
+        case 'KernelAmbiguity'
+            warning('The variable %s already exists. Skipping to the next string...\n','ValueFuncKernel');
+        case 'KLdivAmbiguity'
+            warning('The variable %s already exists. Skipping to the next string...\n','ValueFuncKLdivAmbiguity');
+        case 'WassersteinAmbiguity'
+            warning('The variable %s already exists. Skipping to the next string...\n','ValueFuncWasserstein');
+        otherwise
+            error('Type of Ambiguity not implemented')
+    end
+end
+
+
+
+
+
+
+
+
+end
 
 
 

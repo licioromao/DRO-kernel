@@ -9,6 +9,7 @@ classdef ComputeValueFunction
         param % structure with all the parameters of the problem
         IndexSafeAndReachSet % Indices of the safe and reach set
         N % horizon of the reach-avoid property
+        time % this will store the time to go through a full value function computation
     end
     
     methods
@@ -20,6 +21,7 @@ classdef ComputeValueFunction
             obj.param = ArgParam;
             obj.IndexSafeAndReachSet = [];
             obj.N = ArgParam.N;
+            obj.time = [];
         end
         
         function obj = getIndexReachAvoid(obj,StatePartition)
@@ -101,15 +103,18 @@ classdef ComputeValueFunction
                 for j = 1:NumberOfPoints % iterates over the number of points                   
                     x = Grid_x(j,:)'; % getting the current state to be updated
                     tempValueFunc = zeros(NumberInputs,1);
-                    for uCounter = 1:NumberInputs
+                    Lastime = 0;
+                    tic;
+                    parfor uCounter = 1:NumberInputs
                         u = InputPartition(uCounter,:)'; % iterating over the number of inputs
                         tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
                     end
-                    
+                    Lastime = toc;
                     % Update waitbar
-                    iterates = RemainingIterations(2,[[obj.N-i+1;j],[obj.N;NumberOfPoints]],NumberInputs,hh);
+                    iterates = RemainingIterations(2,[[obj.N-i+1;j],[obj.N;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
+                    SecToGo = (total_iterations - iterates)*Lastime;
                     perc_iterates = iterates/total_iterations;
-                    waitbar(perc_iterates,hh,sprintf('%.5f completed',perc_iterates));
+                    waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
                     
                     [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
                 end
@@ -171,10 +176,10 @@ classdef ComputeValueFunction
                             OptPro = WassersteinAmbiguity(ep,ObjFunc,CenterBall);
                             out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                         case 'KernelAmbiguity'
-                            ep = 0.1; CenterBall = TransitionProb{i}.ProbMeasure;
+                            ep = 0.01; CenterBall = TransitionProb{i}.ProbMeasure;
                             OptPro = KernelBasedAmbiguity(ep,ObjFunc,CenterBall);
-                            OptPro.gamma = 5;  OptPro.CurrentState = x;
-                            OptPro.Input = u; OptPro.m = 50; OptPro.param = obj.param;
+                            OptPro.gamma = 1;  OptPro.CurrentState = x;
+                            OptPro.Input = u; OptPro.m = 1000; OptPro.param = obj.param;
                             out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj);
                         case 'KLdivAmbiguity'
                             ep = 0.01; CenterBall = TransitionProb{i}.ProbMeasure;
