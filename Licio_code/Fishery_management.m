@@ -363,7 +363,7 @@ for i1 = 1:Nx1
                     temp{j}.ProbMeasure = prob_xu;
                     
                     % The two lines below updates the progress bar
-                    index = RemainingIterations(3,[[i1;i2;i3;j],[Nx1;Nx2;Nx3;Nu]],1,h);
+                    index = RemainingIterations(4,[[i1;i2;i3;j],[Nx1;Nx2;Nx3;Nu]],1,h);
                     SecToGo = (total_iterations - index)*Lastime;
                     waitbar(index/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',index/total_iterations,SecToGo));
                 end
