@@ -78,8 +78,10 @@ param.sizePartition = Grid.getSizePartition;
 
 % Generating the transition probability
 if isempty(TransitionProb) % only executes if TransitionPorb is empty
-    TransitionProb = EstimateTransition(Grid,InputPartition,param);
+    TransitionProb = EstimateTransition(Grid,InputPartition,param); 
 end
+
+% I WOULD LIKE THIS TO BE PRESENT ONLY IN THE DEVELPPMENT BRANCH
 
 param.TransitionProb = TransitionProb;
 % Value function computation
