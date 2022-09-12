@@ -32,7 +32,7 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             SumKernel = 0;
             alpha = obj.q;
             tempXSum = zeros(length(obj.param.List),1);
-            tempPartition = ObjPartition.getValues;
+            tempPartition = ObjPartition.getValues.Partition;
             
 %             for i=1:obj.m
 %                 Noise = generateNoise(obj.param);

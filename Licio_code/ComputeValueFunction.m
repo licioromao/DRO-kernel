@@ -4,33 +4,43 @@ classdef ComputeValueFunction
     
     properties
         ValueFunction % This value stores the optimal value function
+        TypeOfVectorField % This value stores the type of Vector field
         OptInput % This value stores the optimal action
         AmbiguityType % Type of ambiguity set
         param % structure with all the parameters of the problem
         IndexSafeAndReachSet % Indices of the safe and reach set
+        IndexSafeSet
         N % horizon of the reach-avoid property
         time % this will store the time to go through a full value function computation
     end
     
     methods
-        function obj = ComputeValueFunction(ArgParam,Type)
+        function obj = ComputeValueFunction(ArgParam,TypeOfVectorField,TypeOfAmbiguity)
             NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3); % number of points of the value function
             obj.ValueFunction = zeros(NumberOfPoints + 1,ArgParam.N+1); % initializing the variable to store the value function
             obj.OptInput = zeros(NumberOfPoints + 1,ArgParam.N+1); % initializing the variable to store the optimal input
-            obj.AmbiguityType = Type;
+            obj.TypeOfVectorField = TypeOfVectorField;
+            obj.AmbiguityType = TypeOfAmbiguity;
             obj.param = ArgParam;
             obj.IndexSafeAndReachSet = [];
             obj.N = ArgParam.N;
             obj.time = [];
         end
         
-        function obj = getIndexReachAvoid(obj,StatePartition)
+        function obj = getIndexReachAvoid(obj,ObjStatePartition)
+            
+            if ~strcmp(obj.TypeOfVectorField,'Fishery')
+                error('This function can only be used for reach avoid specifications. Please check if this is your case.')
+            end
             
             % Retuns the indices of the safe and reach sets associated with the partition
             
-            Nx1 = size(StatePartition.X1,2);
-            Nx2 = size(StatePartition.X1,1);
-            Nx3 = size(StatePartition.X1,3);
+            tempStatePartition = ObjStatePartition.Partition;
+            
+            
+            Nx1 = size(tempStatePartition.X1,2);
+            Nx2 = size(tempStatePartition.X1,1);
+            Nx3 = size(tempStatePartition.X1,3);
             
             % Information about the safe and reach sets
             SafeSet = obj.param.SafeSet;
@@ -44,7 +54,7 @@ classdef ComputeValueFunction
             for i1 = 1:Nx1
                 for i2=1:Nx2
                     for i3=1:Nx3
-                        x = [StatePartition.X1(i2,i1,i3);StatePartition.X2(i2,i1,i3);StatePartition.X3(i2,i1,i3)];  % current state
+                        x = [tempStatePartition.X1(i2,i1,i3);tempStatePartition.X2(i2,i1,i3);tempStatePartition.X3(i2,i1,i3)];  % current state
                         index = (i1-1)*Nx2*Nx3 + (i2-1)*Nx3 + i3;
                         
                         % if current state belongs to safe set, then set the
@@ -77,6 +87,41 @@ classdef ComputeValueFunction
             
         end
         
+        function obj = getIndexSafety(obj,ObjStatePartition)
+            
+            if ~strcmp(obj.TypeOfVectorField,'TCL')
+                error('This function can only be used for safety specifications. Please check if this is your case.')
+            end
+            
+            % Retuns the indices of the safe set associated with the partition
+            
+            tempStatePartition = ObjStatePartition.Partition;
+            
+            
+            NumberOfPoints = size(tempStatePartition.X,1);
+            
+            % Information about the safe and reach sets
+            SafeSet = obj.param.SafeSet;
+            
+            % Initializing the variables that will store the indices
+            safeIndex = false(NumberOfPoints +1,1);
+                      
+            % Iterating over states
+            for i = 1:NumberOfPoints
+                x = tempStatePartition.X(i);  % current state
+                               
+                % if current state belongs to safe set, then set the
+                % corresponding index to true
+                if min(SafeSet(1) <= x) && min(x <= SafeSet(2))
+                    safeIndex(i) = true;
+                end
+            end           
+            
+            % saving the results
+            obj.IndexSafeSet = safeIndex;
+            
+        end
+        
         function obj = BackwardIteration(obj,StatePartitionObj,InputPartition)
             
             % Testing the value of N
@@ -86,47 +131,102 @@ classdef ComputeValueFunction
                 error('N must be a positive integer (int8, int16, etc...)');
             end
             
-            NumberOfPoints = obj.param.NumberOfPartitions(1)*obj.param.NumberOfPartitions(2)*obj.param.NumberOfPartitions(3); % number of points of the value function
-            NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
-            obj.ValueFunction(obj.IndexSafeAndReachSet.reachIndex,obj.N+1) = 1; % initializing the value function on the reach set
-            Grid_x = StatePartitionObj.getValues.grid_x;
+            switch obj.TypeOfVectorField
+                case 'Fishery'
                     
-            % Creating a progress bar of the value function computation
-            hh = waitbar(0,'Initializing','Name','Computing Value Function...');
-            total_iterations = double((obj.N)*NumberOfPoints*NumberInputs);
-            fprintf('Total of iterations: %d \n',total_iterations);
-            
-            for i = obj.N:-1:1
-                NextValueFunc = obj.ValueFunction(:,i+1); % saving in a temporary variable the value function of the next step
-                ValueFunctionTemp = zeros(NumberOfPoints,1);
-                OptInputTemp = zeros(NumberOfPoints,1);
-                for j = 1:NumberOfPoints % iterates over the number of points                   
-                    x = Grid_x(j,:)'; % getting the current state to be updated
-                    tempValueFunc = zeros(NumberInputs,1);
-                    Lastime = 0;
-                    tic;
-                    parfor uCounter = 1:NumberInputs
-                        u = InputPartition(uCounter,:)'; % iterating over the number of inputs
-                        tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
+                    NumberOfPoints = obj.param.NumberOfPartitions(1)*obj.param.NumberOfPartitions(2)*obj.param.NumberOfPartitions(3); % number of points of the value function
+                    NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
+                    
+                    if isempty(obj.IndexSafeAndReachSet)
+                        error('This function cannot run if IndexSafeAndReachSet is empty. Please try using the method getIndexReachAvoid');
                     end
-                    Lastime = toc;
-                    % Update waitbar
-                    iterates = RemainingIterations(2,[[obj.N-i+1;j],[obj.N;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
-                    SecToGo = (total_iterations - iterates)*Lastime;
-                    perc_iterates = iterates/total_iterations;
-                    waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
                     
-                    [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
-                end
-                
-                obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
-                obj.OptInput(1:end -1,i) = OptInputTemp;
+                    obj.ValueFunction(obj.IndexSafeAndReachSet.reachIndex,obj.N+1) = 1; % initializing the value function on the reach set
+                    Grid_x = StatePartitionObj.getValues.Partition.grid_x;
+                    
+                    % Creating a progress bar of the value function computation
+                    hh = waitbar(0,'Initializing','Name','Computing Value Function...');
+                    total_iterations = double((obj.N)*NumberOfPoints*NumberInputs);
+                    fprintf('Total of iterations: %d \n',total_iterations);
+                    
+                    for i = obj.N:-1:1
+                        NextValueFunc = obj.ValueFunction(:,i+1); % saving in a temporary variable the value function of the next step
+                        ValueFunctionTemp = zeros(NumberOfPoints,1);
+                        OptInputTemp = zeros(NumberOfPoints,1);
+                        for j = 1:NumberOfPoints % iterates over the number of points
+                            x = Grid_x(j,:)'; % getting the current state to be updated
+                            tempValueFunc = zeros(NumberInputs,1);
+                            Lastime = 0;
+                            tic;
+                            parfor uCounter = 1:NumberInputs
+                                u = InputPartition(uCounter,:)'; % iterating over the number of inputs
+                                tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
+                            end
+                            Lastime = toc;
+                            % Update waitbar
+                            iterates = RemainingIterations(2,[[obj.N-i+1;j],[obj.N;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
+                            SecToGo = (total_iterations - iterates)*Lastime;
+                            perc_iterates = iterates/total_iterations;
+                            waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
+                            
+                            [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
+                        end
+                        
+                        obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
+                        obj.OptInput(1:end -1,i) = OptInputTemp;
+                    end
+                    close(hh)
+                case 'TCL'
+                    
+                    NumberOfPoints = obj.param.NumberOfPartitions; % number of points of the value function
+                    NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
+                    
+                    if isempty(obj.IndexSafeSet)
+                        error('This function cannot run if IndexSafeAndReachSet is empty. Please try using the method getIndexSafety');
+                    end
+                    
+                    
+                    obj.ValueFunction(obj.IndexSafeSet,obj.N+1) = 1; % initializing the value function on the reach set
+                    Grid_x = StatePartitionObj.getValues.Partition.grid_x;
+                    
+                    % Creating a progress bar of the value function computation
+                    hh = waitbar(0,'Initializing','Name','Computing Value Function...');
+                    total_iterations = double((obj.N)*NumberOfPoints*NumberInputs);
+                    fprintf('Total of iterations: %d \n',total_iterations);
+                    
+                    for i = obj.N:-1:1
+                        NextValueFunc = obj.ValueFunction(:,i+1); % saving in a temporary variable the value function of the next step
+                        ValueFunctionTemp = zeros(NumberOfPoints,1);
+                        OptInputTemp = zeros(NumberOfPoints,1);
+                        for j = 1:NumberOfPoints % iterates over the number of points
+                            x = Grid_x(j); % getting the current state to be updated
+                            tempValueFunc = zeros(NumberInputs,1);
+                            Lastime = 0;
+                            tic;
+                            parfor uCounter = 1:NumberInputs
+                                u = InputPartition(uCounter); % iterating over the number of inputs
+                                tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
+                            end
+                            Lastime = toc;
+                            % Update waitbar
+                            iterates = RemainingIterations(2,[[obj.N-i+1;j],[obj.N;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
+                            SecToGo = (total_iterations - iterates)*Lastime;
+                            perc_iterates = iterates/total_iterations;
+                            waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
+                            
+                            [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
+                        end
+                        
+                        obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
+                        obj.OptInput(1:end -1,i) = OptInputTemp;
+                    end
+                    close(hh)  
             end
-            close(hh)
         end
         
         function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc,StatePartitionObj)
             
+                    
             indexCurrentState = strcmp(obj.param.List,sprintf('(%.2f,%.2f,%.2f)',CurrentState(1),CurrentState(2),CurrentState(3)));
             
             indexReachSet = obj.IndexSafeAndReachSet.reachIndex;
@@ -156,7 +256,7 @@ classdef ComputeValueFunction
             
             key = false;
             i = 1;
-            TempPartition = StatePartition(obj.param.NumberOfPartitions,obj.param.SafeSet);
+            TempPartition = StatePartitionObj.getValues.Partition; 
                    
             % Searching for the correct transition probability
             while i <= L && ~key
@@ -167,7 +267,7 @@ classdef ComputeValueFunction
                         case 'NoAmbiguity'
                             out = TransitionProb{i}.ProbMeasure'*ObjFunc; % value function at the current state-action pair
                         case 'MomentAmbiguity'
-                            [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{i}.ProbMeasure,TempPartition.getValues.grid_x,'WithSigma');
+                            [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{i}.ProbMeasure,TempPartition.grid_x,'WithSigma');
                             rhoMu = 2; rhoSigma = 2;
                             OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);  
                             out = AnalyseResults(OptPro,obj.AmbiguityType,[]);                        
