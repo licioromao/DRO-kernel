@@ -39,19 +39,22 @@ param.theta = theta;
 param.eta = eta;
 param.R = R;
 param.P = P;
+param.C = C;
+param.h = h;
 param.p = p;
 param.SafeSet = [Al,Ah];
 
 pd = makedist('Normal','mu',mu,'sigma',sigma);
 pd_truncated = truncate(pd,W(1),W(2));
 
-param.noise = pd_truncated;
+param.w = pd_truncated;
+
 
 x = zeros(N_trajectories,N_steps + 1); 
 input = zeros(N_trajectories,N_steps);
 noise = zeros(N_trajectories,N_steps);
 
-for ell = 1:N_trajectories
+    for ell = 1:N_trajectories
      temp = generateTrajec(@f,x0,N_steps,param);
      x(ell,:) = temp.x;
      input(ell,:) = temp.u;
@@ -134,15 +137,15 @@ end
 %%
 
 % Defining the partition
-
-function out = generatePartition(arg1,arg2,h)
-
-    upper = max(arg1,arg2);
-    low = min(arg1,arg2);
-    
-    out = low:h:upper;    
-    out = out';
-end
+% 
+% function out = generatePartition(arg1,arg2,h)
+% 
+%     upper = max(arg1,arg2);
+%     low = min(arg1,arg2);
+%     
+%     out = low:h:upper;    
+%     out = out';
+% end
 
 % Computing the element of the partition
 

@@ -1,11 +1,23 @@
-function out = generateNoise(param)
+function out = generateNoise(param,type)
 
 % This function generates the noise that acts on the dynamics of the
-% Fishery management problem.
+% Fishery management problem and TCL problem in Insoon Yang's paper.
 
 % Input: param - structure containing the distributions associated with any
 % source of noise in the systems
+%        type -- this is the type of noise we want to generate, depending on the vector field 
+%        in use.
+%
 
-out = [random(param.v,2,1);random(param.gamma,2,1);random(param.lambda);random(param.delta,2,1)];
+switch type
+   case 'Fishery'
+     
+     out = [random(param.v,2,1);random(param.gamma,2,1);random(param.lambda);random(param.delta,2,1)];
 
+   case 'TCL'
+
+       out = random(param.w);
+
+   otherwise 
+      error('This vector field has not been implemented');
 end

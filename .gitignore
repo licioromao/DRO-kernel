@@ -1,4 +1,5 @@
 mpc_code_yalmip_example.m
+Licio_code/testTCL.m
 outer_script.m
 tcl_baseline.m
 *.mat
@@ -6,3 +7,5 @@ tcl_baseline.m
 *.html
 *.asv
 *.ini
+*.swp
+
