@@ -32,29 +32,30 @@ classdef StatePartition
                     Nx2 = size(obj.Partition.X2,1);
                     Nx3 = size(obj.Partition.X3,3);
                     
-                    out = {};
+                    out = cell(Nx1*Nx2*Nx3 + 1,1);
                     
                     for i1 = 1:Nx1
                         for i2 = 1:Nx2
                             for i3 = 1:Nx3
                                 x = [obj.Partition.X1(i2,i1,i3),obj.Partition.X2(i2,i1,i3),obj.Partition.X3(i2,i1,i3)];
-                                out = [out;sprintf('(%.2f,%.2f,%.2f)',x(1),x(2),x(3))];
+                                tempIndex = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],1,[]);
+                                out{tempIndex} = sprintf('(%.2f,%.2f,%.2f)',x(1),x(2),x(3));
                             end
                         end
                     end
                     
-                    out = [out;'NaN']; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
+                    out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
                 case 'TCL'
                     
                     N = size(obj.Partition.X,1);
                     
-                    out = {};
+                    out = cell(N+1,1);
                     
                     for i = 1:N
-                        out = [out;sprintf('(%.5f)',obj.Partition.X(i))];
+                        out{i} = sprintf('(%.5f)',obj.Partition.X(i));
                     end
                     
-                    out = [out;'NaN']; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
+                    out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
                 otherwise
                     NotImplemented();
             end

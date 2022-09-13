@@ -1,6 +1,13 @@
-function out = getDateSaveFile(NumberOfPartitions)
+function out = getDateSaveFile(NumberOfPartitions,TypeOfVectorField)
 
-FirstPart = sprintf('NumberOfPart_%d_%d_%d_Date_',NumberOfPartitions);
+switch TypeOfVectorField
+    case 'Fishery'
+        FirstPart = sprintf('%s_Partition_%d_%d_%d_Date_',TypeOfVectorField,NumberOfPartitions);
+    case 'TCL'
+        FirstPart = sprintf('%s_Partition_%d_Date_',TypeOfVectorField,NumberOfPartitions);
+    otherwise
+end
+
 
 DayTime = clock;
 Months{1} = 'Jan'; Months{2} = 'Feb'; Months{3} = 'Mar'; Months{4} = 'Apr';

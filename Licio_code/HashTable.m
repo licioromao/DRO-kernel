@@ -161,8 +161,8 @@ classdef HashTable
             else
                 obj.CurrentList = arg1;
                 obj.Value = zeros(length(obj.CurrentList),1) ;
-                obj.List = {};
-                obj.lengthList = 0;
+                obj.List = arg1;
+                obj.lengthList = length(arg1);
             end
             
             obj.testStructure();

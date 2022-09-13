@@ -13,13 +13,13 @@ classdef DistanceBasedAmbiguity < Ambiguity
     end
     
     methods
-        function obj = DistanceBasedAmbiguity(arg1,arg2,arg3)
+        function obj = DistanceBasedAmbiguity(Obj,ep,Center)
                     
-            [Epsilon,ProbMeas,ObjFunc] = verifyArgDistanceBased(arg1,arg2,arg3);
-            obj = obj@Ambiguity(ObjFunc); %Call the constructor of the parent class
+            [~,~,~] = verifyArgDistanceBased(Obj,ep,Center);
+            obj = obj@Ambiguity(Obj); %Call the constructor of the parent class
             
-            obj.q = ProbMeas; % Initialize the center of the ambiguity set
-            obj.epsilon = Epsilon; % radius of the ambiguity set
+            obj.q = Center; % Initialize the center of the ambiguity set
+            obj.epsilon = ep; % radius of the ambiguity set
         end
         
         function out = getValues(obj)
