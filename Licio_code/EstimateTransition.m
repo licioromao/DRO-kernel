@@ -289,7 +289,7 @@ switch TypeOfVectorField
         
         temp = zeros(Nx1*Nx2*Nx3 + 1,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
-        parfor i = 1:n_core
+        for i = 1:n_core
             tempParam = param;
             tempParam.MC = MCParallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
             temp(:,i) = RunMonteCarlo(x,u,Grid,TypeOfVectorField,tempParam);
@@ -302,7 +302,7 @@ switch TypeOfVectorField
         
         temp = zeros(N + 1,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
-        parfor i = 1:n_core
+        for i = 1:n_core
             tempParam = param;
             tempParam.MC = MCParallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
             temp(:,i) = RunMonteCarlo(x,u,Grid,TypeOfVectorField,tempParam);
