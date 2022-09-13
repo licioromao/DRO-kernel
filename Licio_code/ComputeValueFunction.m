@@ -271,79 +271,43 @@ classdef ComputeValueFunction
             % value function at the next iteration (NextValueFunc).
             
             TransitionProb = obj.param.TransitionProb; % vector with the transition probability matrix
-            L1 = length(TransitionProb); % number of states in the transition probability
-            L2 = length(TransitionProb{1});
+            ListX = obj.param.ListX;
             
-            if length(NextValueFunc) ~= length(TransitionProb)
+            if length(NextValueFunc) ~= length(ListX)
                 error('The dimension of the thrid argument is incorrect.') % outputs an error if L is inconsistent with the size of the input Z
             end
             
-            switch obj.TypeOfVectorField
-                case 'Fishery'
-                    stringX = sprintf('(%.2f,%.2f,%.2f)',x(1),x(2),x(3)); % creating the string of the current state
-                    stringU = sprintf('(%.2f,%.2f)',u(1),u(2)); % creating the string of the current action
-                case 'TCL'
-                    stringX = sprintf('(%.5f)',x); % creating the string of the current state
-                    stringU = sprintf('(%.2f)',u); % creating the string of the current action
-                otherwise 
-                    NotImplemented();
-            end
             
+            StringXU = createXandUString(x,u);
             
-            key = false;
-            i = 1;
-            TempPartition = StatePartitionObj.getValues.Partition;
-            
-            % Searching for the correct transition probability
-            while i <= L1 && ~key
-                if strcmp(TransitionProb{i}{1}.State,stringX) % if stringX and stringU matches with the information in the transition prob matrix
-                    key = true;
-                    index1 = i;
-                end
-                i = i+1;
-            end
-            
-            if ~key % outputs an error is there is no element in TransitionProb with the label (stringX,stringU)
+            if ~TransitionProb.isKey({StringXU}) % outputs an error is there is no element in TransitionProb with the label (stringX,stringU)
                 error('The input-action pair is not a member of the transition probability')
-            end
-            
-            key = false;
-            i = 1;
-            
-            while i<= L2 && ~key
-                if strcmp(TransitionProb{index1}{i}.Action,stringU) % if stringX and stringU matches with the information in the transition prob matrix
-                    key = true;
-                    index2 = i;
-                end
-                i = i+1;
-            end
-            
-            if ~key % outputs an error is there is no element in TransitionProb with the label (stringX,stringU)
-                error('The input-action pair is not a member of the transition probability')
-            end
-            
+            end          
             
             ObjFunc = NextValueFunc;
+            TransXU = TransitionProb.values({StringXU});
+            
             switch obj.AmbiguityType
                 case 'NoAmbiguity'
-                    out = TransitionProb{index1}{index2}.ProbMeasure'*ObjFunc; % value function at the current state-action pair
+                    out = TransXU{1}'*ObjFunc; % value function at the current state-action pair
                 case 'MomentAmbiguity'
-                    [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{index1}{index2}.ProbMeasure,TempPartition.grid_x,'WithSigma',obj.TypeOfVectorField);
+                    TempPartition = StatePartitionObj.getValues.Partition;
+                    [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransXU{1},TempPartition.grid_x,'WithSigma',obj.TypeOfVectorField);
                     rhoMu = 0.2; rhoSigma = 1.5;
                     OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);
                     out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                 case 'WassersteinAmbiguity'
-                    ep = 0.1; CenterBall = TransitionProb{index1}{index2}.ProbMeasure;
+                    ep = 0.1; CenterBall = TransXU{1};
                     OptPro = WassersteinAmbiguity(ObjFunc,ep,CenterBall);
                     out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                 case 'KernelAmbiguity'
-                    ep = 0.01; CenterBall = TransitionProb{index1}{index2}.ProbMeasure;
-                    OptPro = KernelBasedAmbiguity(ObjFunc,ep,CenterBall);
+                    ep = 0.01; CenterBall = TransXU{1};
+                    OptPro = KernelBasedAmbiguity(ObjFunc,ep,CenterBall,@GaussianKernel);
                     OptPro.gamma = 1;  OptPro.CurrentState = x;
                     OptPro.Input = u; OptPro.m = 1000; OptPro.param = obj.param;
                     out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj);
                 case 'KLdivAmbiguity'
-                    ep = 0.01; CenterBall = TransitionProb{index1}{index2}.ProbMeasure;
+                    ep = 0.01; CenterBall = TransXU{1};
                     OptPro = KLdivAmbiguity(ObjFunc,ep,CenterBall);
                     out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                 otherwise
@@ -365,7 +329,7 @@ switch TypeOfVectorField
         
     case 'Fishery'
         SupportSet = Partition';
-        SupportSet = [SupportSet,[-1;-1;-1]];
+        SupportSet = [SupportSet,[210;210;1300]];
     otherwise
         NotImplemented();
 end

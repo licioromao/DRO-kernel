@@ -71,9 +71,10 @@ param.NumberOfPartitions = NumberOfPartitions;
 %Noise = generateNoise(param);
 
 Grid = StatePartition(NumberOfPartitions,param.SafeSet,'Fishery'); % Generate the partition of the state space
-List = Grid.createList; % List containing labels for the discrete states of the discretazation
+[List,ListX] = Grid.createList(InputPartition); % List containing labels for the discrete states of the discretazation
 
 param.List = List;
+param.ListX = ListX;
 param.sizePartition = Grid.getSizePartition;
 
 % Generating the transition probability

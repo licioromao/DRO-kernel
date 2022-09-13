@@ -16,7 +16,7 @@ classdef StatePartition
             out.TypeOfVectorField = obj.TypeOfVectorField;
         end
         
-        function out = createList(obj)
+        function [out,outX] = createList(obj,InputPartition)
             
             % This function creates a vector of array that contains the labels of the
             % states of the generated discrete model
@@ -31,28 +31,48 @@ classdef StatePartition
                     Nx1 = size(obj.Partition.X1,2);
                     Nx2 = size(obj.Partition.X2,1);
                     Nx3 = size(obj.Partition.X3,3);
+                    Nu = size(InputPartition,1);
                     
-                    out = cell(Nx1*Nx2*Nx3 + 1,1);
+                    out = cell(Nx1*Nx2*Nx3*Nu + 1,1);
+                    outX = cell(Nx1*Nx2*Nx3 + 1,1);
                     
                     for i1 = 1:Nx1
                         for i2 = 1:Nx2
                             for i3 = 1:Nx3
                                 x = [obj.Partition.X1(i2,i1,i3),obj.Partition.X2(i2,i1,i3),obj.Partition.X3(i2,i1,i3)];
-                                tempIndex = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],1,[]);
-                                out{tempIndex} = sprintf('(%.2f,%.2f,%.2f)',x(1),x(2),x(3));
+                                for j=1:Nu
+                                    u = InputPartition(j,:);
+                                    
+                                    tempIndex1 = RemainingIterations(4,[[i1;i2;i3;j],[Nx1;Nx2;Nx3;Nu]],1,[]);
+                                    
+                                    out{tempIndex1} = createXandUString(x,u);
+                                end
+                                
+                                tempIndex2 = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],1,[]);
+                                outX{tempIndex2} = createXandUString(x,[]);
                             end
                         end
                     end
                     
                     out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
+                    outX{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
                 case 'TCL'
                     
                     N = size(obj.Partition.X,1);
+                    Nu = 2;
                     
-                    out = cell(N+1,1);
+                    out = cell(Nu*N+1,1);
+                    outX = cell(N + 1,1);
                     
                     for i = 1:N
-                        out{i} = sprintf('(%.5f)',obj.Partition.X(i));
+                        x = obj.Partition.X(i);
+                        for j=1:2
+                            
+                            tempIndex1 = RemainingIterations(2,[[i;j],[N;2]],1,[]);
+                            
+                            out{tempIndex1} = createXandUString(x,j-1);
+                        end
+                        outX{i} = createXandUString(x,[]);
                     end
                     
                     out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
