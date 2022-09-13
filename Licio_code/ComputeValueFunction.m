@@ -169,7 +169,7 @@ classdef ComputeValueFunction
                             
                             tic;
                             tempIterateFunc = @obj.iterateValueFunction;
-                            for uCounter = 1:NumberInputs
+                            parfor uCounter = 1:NumberInputs
                                 u = InputPartition(uCounter,:)'; % iterating over the number of inputs
                                 tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
                             end

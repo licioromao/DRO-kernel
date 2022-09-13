@@ -39,7 +39,8 @@ switch TypeOfVectorField
         
         MC = param.MC; % Number of Monte Carlo simulation for each transition
         
-        tempValues = cell(Nx1*Nx2*Nx3*Nu + 1,1);
+        NumberOfPoints = Nx1*Nx2*Nx3*Nu + 1;
+        tempValues = cell(NumberOfPoints,1);
         
         h = waitbar(0,'Initializing','Name','Generating Transition probabilities...'); % Plotting a bar to check the progress
         total_iterations = Nx1*Nx2*Nx3*Nu; % total number of remaining iterations
@@ -52,13 +53,19 @@ switch TypeOfVectorField
                         
                         % Iterate over all possible input combination
                         tempTime = tic;
-                        for j =1:Nu
+                        tempParForProb = zeros(NumberOfPoints,Nu);
+                        parfor j =1:Nu
                             u = InputPartition(j,:); % selecting a particular allowable input                           
                             prob_xu = RunMonteCarlo(x,u,Grid,TypeOfVectorField,param); % empirical estimate of the transition probability
-                            
-                            indexTrans = RemainingIterations(4,[[i1;i2;i3;j],[Nx1;Nx2;Nx3;Nu]],1,[]);
-                            tempValues{indexTrans} = prob_xu;
+                            tempParForProb(:,j) = prob_xu;
                         end
+                                               
+                        indexTrans = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],Nu,[]);
+                        
+                        for j=0:Nu-1
+                            tempValues{indexTrans +j} = tempParForProb(:,j+1);
+                        end
+                                                
                         Lastime = toc(tempTime);
                         
                         % The two lines below updates the progress bar
@@ -291,7 +298,7 @@ switch TypeOfVectorField
         
         temp = zeros(Nx1*Nx2*Nx3 + 1,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
-        for i = 1:n_core
+        parfor i = 1:n_core
             tempParam = param;
             tempParam.MC = MCParallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
             temp(:,i) = RunMonteCarlo(x,u,Grid,TypeOfVectorField,tempParam);
