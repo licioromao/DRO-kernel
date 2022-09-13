@@ -39,8 +39,8 @@ switch TypeOfVectorField
         
         MC = param.MC; % Number of Monte Carlo simulation for each transition
         
-        NumberOfPoints = Nx1*Nx2*Nx3*Nu + 1;
-        tempValues = cell(NumberOfPoints,1);
+        NumberOfPoints = Nx1*Nx2*Nx3 + 1;
+        tempValues = cell(Nx1*Nx2*Nx3*Nu + 1,1);
         
         h = waitbar(0,'Initializing','Name','Generating Transition probabilities...'); % Plotting a bar to check the progress
         total_iterations = Nx1*Nx2*Nx3*Nu; % total number of remaining iterations
@@ -62,8 +62,8 @@ switch TypeOfVectorField
                                                
                         indexTrans = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],Nu,[]);
                         
-                        for j=0:Nu-1
-                            tempValues{indexTrans +j} = tempParForProb(:,j+1);
+                        for j=Nu-1:-1:0
+                            tempValues{indexTrans - j} = tempParForProb(:,Nu-j);
                         end
                                                 
                         Lastime = toc(tempTime);
@@ -104,32 +104,33 @@ switch TypeOfVectorField
         
         MC = param.MC; % Number of Monte Carlo simulation for each transition
         
+        NumberOfPoints = N + 1;
+        tempValues = cell(N*Nu + 1,1);
                
         h = waitbar(0,'Initializing','Name','Generating Transition probabilities...'); % Plotting a bar to check the progress
         total_iterations = N*Nu; % total number of remaining iterations
-        
-        out = cell(N + 1,1);
-        
+              
         
         for i = 1:N
             x = tempStatePartition.X(i); % Get the current state
-            stringX = sprintf('(%.5f)',x); % Convert the state into an allowable name
-            temp = cell(Nu,1); % temp variable
             if MC <= 100 % if number of MC simulations if less than 100 do not use parallel computation
                 
                 % Iterate over all possible input combination
                 tempTime2 = tic;
-                for j =1:Nu
-                    u = InputPartition(j,:); % selecting a particular allowable input
-                    stringU = sprintf('(%.2f)',u); % creating the corresponding string
-                    
+                tempParForProb = zeros(NumberOfPoints,Nu);
+                
+                parfor j =1:Nu
+                    u = InputPartition(j,:); % selecting a particular allowable input                  
                     prob_xu = RunMonteCarlo(x,u,Grid,TypeOfVectorField,param); % empirical estimate of the transition probability
-                    
-                    % saving the results
-                    temp{j}.State = stringX;
-                    temp{j}.Action = stringU;
-                    temp{j}.ProbMeasure = prob_xu;
+                    tempParForProb(:,j) = prob_xu;
                 end
+                
+                indexTrans = RemainingIterations(1,[i,N],Nu,[]);
+                
+                for j=Nu-1:-1:0
+                    tempValues{indexTrans - j} = tempParForProb(:,Nu-j);
+                end
+                
                 Lastime = toc(tempTime2);
                 
                 % The two lines below updates the progress bar
@@ -142,27 +143,21 @@ switch TypeOfVectorField
                 % Iterate over all possible input combination
                 for j =1:Nu
                     u = InputPartition(j); % selecting a particular allowable input
-                    stringU = sprintf('(%.2f)',u); % creating the corresponding string
-                    
+                                      
                     tempTime3 = tic;
                     
                     prob_xu = RunMonteCarloParallel(x,u,Grid,TypeOfVectorField,eval(getenv('NUMBER_OF_PROCESSORS')),param); % empirical estimate of the transition probability using parallel computation
                     
-                    % saving results
-                    temp{j}.State = stringX;
-                    temp{j}.Action = stringU;
-                    temp{j}.ProbMeasure = prob_xu;
-                    
+                    indexTrans = RemainingIterations(2,[[i;j],[N;Nu]],1,[]);
+                    tempValues{indexTrans} = prob_xu;
+                                        
                     Lastime = toc(tempTime3);
                     
                     % The two lines below updates the progress bar
-                    index = RemainingIterations(2,[[i;j],[N;Nu]],1,h);
-                    SecToGo = (total_iterations - index)*Lastime;
-                    waitbar(index/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',index/total_iterations,SecToGo));
+                    SecToGo = (total_iterations - indexTrans)*Lastime;
+                    waitbar(indexTrans/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',indexTrans/total_iterations,SecToGo));
                 end
             end
-            indexTemp = RemainingIterations(1,[i,N],1,h);
-            out{indexTemp} = temp;
         end
 end
 
@@ -230,6 +225,8 @@ switch TypeOfVectorField
         
     case 'TCL'
         
+        N = size(tempPartition.X,1);
+        
         for i = 1:MC % iterate over the number of simulations
             noise = generateNoise(param,TypeOfVectorField); % simulates a noise transition
             
@@ -239,16 +236,11 @@ switch TypeOfVectorField
             
             if ~isempty(indexMemberPartition) % if an element if found
                 
-                memberPartition = tempPartition.X(indexMemberPartition); % get the corresponding element
+                index = RemainingIterations(1,[indexMemberPartition,N],1,[]);
                 
-                stringPartition = sprintf('(%.5f)',memberPartition); % string to be added to the private list in the hash table
-                
-                hTable = hTable.appendString(stringPartition); % append the element to the partition, nothing is done if an element is already a member of the list
-                hTable = hTable.addValue(stringPartition,1); % add one to the corresponding value
+                tempValues{index} = tempValues{index} + 1/MC;
             else % if the transition happens to a state outside the safe region
-                stringPartition = 'NaN';
-                hTable = hTable.appendString(stringPartition); % append the element to the partition, nothing is done if an element is already a member of the list
-                hTable = hTable.addValue(stringPartition,1); % add one to the corresponding value
+                tempValues{end} = tempValues{end} + 1/MC;
             end
             
         end
@@ -311,7 +303,7 @@ switch TypeOfVectorField
         
         temp = zeros(N + 1,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
-        for i = 1:n_core
+        parfor i = 1:n_core
             tempParam = param;
             tempParam.MC = MCParallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
             temp(:,i) = RunMonteCarlo(x,u,Grid,TypeOfVectorField,tempParam);

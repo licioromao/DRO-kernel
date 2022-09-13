@@ -76,6 +76,7 @@ classdef StatePartition
                     end
                     
                     out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
+                    outX{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
                 otherwise
                     NotImplemented();
             end

@@ -213,7 +213,7 @@ classdef ComputeValueFunction
                             tempValueFunc = zeros(NumberInputs,1);
                             tic;
                             tempIterateFunc = @obj.iterateValueFunction;
-                            for uCounter = 1:NumberInputs
+                            parfor uCounter = 1:NumberInputs
                                 u = InputPartition(uCounter); % iterating over the number of inputs
                                 tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj);	 % getting the new value for the value function
                             end
@@ -236,9 +236,12 @@ classdef ComputeValueFunction
         
         function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc,StatePartitionObj)
             
+            StringCurrentState = createXandUString(CurrentState,[]);
+            
             switch obj.TypeOfVectorField
                 case 'Fishery'
-                    indexCurrentState = strcmp(obj.param.List,sprintf('(%.2f,%.2f,%.2f)',CurrentState(1),CurrentState(2),CurrentState(3)));
+                    
+                    indexCurrentState = strcmp(obj.param.List,StringCurrentState);
                     
                     indexReachSet = obj.IndexSafeAndReachSet.reachIndex;
                     
@@ -248,7 +251,7 @@ classdef ComputeValueFunction
                         out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj);
                     end
                 case 'TCL'
-                    indexCurrentState = strcmp(obj.param.List,sprintf('(%.5f)',CurrentState));
+                    indexCurrentState = strcmp(obj.param.List,StringCurrentState);
                     
                     indexSafety = obj.IndexSafeSet;
                     
