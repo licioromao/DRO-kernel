@@ -57,8 +57,8 @@ switch typeOfVectorField
         out.X3 = X3;
         out.grid_x = grid_x;
     case 'TCL'
-        ub = max(SafeSet);
-        lb = min(SafeSet);
+        ub = max(SafeSet) + 2;
+        lb = min(SafeSet) - 2;
         h = (ub-lb)/(No_partition-1);
         
         tempOut = lb:h:ub;

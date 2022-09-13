@@ -117,7 +117,7 @@ function out = generateTrajec(f,x0,L,param)
     
     for i =2:L+1
         u = binornd(1,param.p);
-        omega = random(param.noise);
+        omega = random(param.w);
         previous = out.x(i-1);
         next = f(previous,u,omega,param);
         out.u(i-1) = u;
@@ -136,16 +136,16 @@ end
 
 %%
 
-% Defining the partition
-% 
-% function out = generatePartition(arg1,arg2,h)
-% 
-%     upper = max(arg1,arg2);
-%     low = min(arg1,arg2);
-%     
-%     out = low:h:upper;    
-%     out = out';
-% end
+%% Defining the partition
+
+function out = generatePartition(arg1,arg2,h)
+
+    upper = max(arg1,arg2);
+    low = min(arg1,arg2);
+    
+    out = low:h:upper;    
+    out = out';
+end
 
 % Computing the element of the partition
 

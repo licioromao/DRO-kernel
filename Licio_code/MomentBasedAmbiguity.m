@@ -32,16 +32,19 @@ classdef MomentBasedAmbiguity < Ambiguity
     
     methods
         % Constructor of the class
-        function obj = MomentBasedAmbiguity(arg1,arg2,arg3,arg4,arg5,arg6)
+        function obj = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet)
           
-            [ObjFunc,MeanCenter,VarianceCenter,SupportSet,rhoMu,rhoSigma] = verifyArg(arg1,arg2,arg3,arg4,arg5,arg6); % This function verifies the consistency of the parameters
+            CheckPSDandSymmetric(Sigma);
+            
+            
+            %[ObjFunc,MeanCenter,VarianceCenter,SupportSet,rhoMu,rhoSigma] = verifyArg(arg1,arg2,arg3,arg4,arg5,arg6); % This function verifies the consistency of the parameters
             
             obj = obj@Ambiguity(ObjFunc); % Calls the constructor of the class ambiguity
             
             % Saving the values of the private field of the class
             obj.supportSet = SupportSet;
-            obj.mu = MeanCenter;
-            obj.sigma = VarianceCenter;
+            obj.mu = mu;
+            obj.sigma = Sigma;
             
             obj.rhoMu = rhoMu;
             obj.rhoSigma = rhoSigma;       

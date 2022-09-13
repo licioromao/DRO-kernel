@@ -16,7 +16,17 @@ classdef ComputeValueFunction
     
     methods
         function obj = ComputeValueFunction(ArgParam,TypeOfVectorField,TypeOfAmbiguity)
-            NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3); % number of points of the value function
+            
+            switch TypeOfVectorField
+                case 'Fishery'
+                    NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3); % number of points of the value function
+                case 'TCL'
+                    NumberOfPoints = ArgParam.NumberOfPartitions; % number of points of the value function
+                otherwise
+                    NotImplemented();
+            end
+            
+            
             obj.ValueFunction = zeros(NumberOfPoints + 1,ArgParam.N+1); % initializing the variable to store the value function
             obj.OptInput = zeros(NumberOfPoints + 1,ArgParam.N+1); % initializing the variable to store the optimal input
             obj.TypeOfVectorField = TypeOfVectorField;
@@ -105,17 +115,17 @@ classdef ComputeValueFunction
             
             % Initializing the variables that will store the indices
             safeIndex = false(NumberOfPoints +1,1);
-                      
+            
             % Iterating over states
             for i = 1:NumberOfPoints
                 x = tempStatePartition.X(i);  % current state
-                               
+                
                 % if current state belongs to safe set, then set the
                 % corresponding index to true
                 if min(SafeSet(1) <= x) && min(x <= SafeSet(2))
                     safeIndex(i) = true;
                 end
-            end           
+            end
             
             % saving the results
             obj.IndexSafeSet = safeIndex;
@@ -156,11 +166,12 @@ classdef ComputeValueFunction
                         for j = 1:NumberOfPoints % iterates over the number of points
                             x = Grid_x(j,:)'; % getting the current state to be updated
                             tempValueFunc = zeros(NumberInputs,1);
-                            Lastime = 0;
+                            
                             tic;
-                            parfor uCounter = 1:NumberInputs
+                            tempIterateFunc = @obj.iterateValueFunction;
+                            for uCounter = 1:NumberInputs
                                 u = InputPartition(uCounter,:)'; % iterating over the number of inputs
-                                tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
+                                tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
                             end
                             Lastime = toc;
                             % Update waitbar
@@ -183,8 +194,7 @@ classdef ComputeValueFunction
                     
                     if isempty(obj.IndexSafeSet)
                         error('This function cannot run if IndexSafeAndReachSet is empty. Please try using the method getIndexSafety');
-                    end
-                    
+                    end                    
                     
                     obj.ValueFunction(obj.IndexSafeSet,obj.N+1) = 1; % initializing the value function on the reach set
                     Grid_x = StatePartitionObj.getValues.Partition.grid_x;
@@ -201,11 +211,11 @@ classdef ComputeValueFunction
                         for j = 1:NumberOfPoints % iterates over the number of points
                             x = Grid_x(j); % getting the current state to be updated
                             tempValueFunc = zeros(NumberInputs,1);
-                            Lastime = 0;
                             tic;
-                            parfor uCounter = 1:NumberInputs
+                            tempIterateFunc = @obj.iterateValueFunction;
+                            for uCounter = 1:NumberInputs
                                 u = InputPartition(uCounter); % iterating over the number of inputs
-                                tempValueFunc(uCounter) = obj.iterateValueFunction(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
+                                tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj);	 % getting the new value for the value function
                             end
                             Lastime = toc;
                             % Update waitbar
@@ -220,74 +230,75 @@ classdef ComputeValueFunction
                         obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
                         obj.OptInput(1:end -1,i) = OptInputTemp;
                     end
-                    close(hh)  
+                    close(hh)
             end
         end
         
         function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc,StatePartitionObj)
             
+            switch obj.TypeOfVectorField
+                case 'Fishery'
+                    indexCurrentState = strcmp(obj.param.List,sprintf('(%.2f,%.2f,%.2f)',CurrentState(1),CurrentState(2),CurrentState(3)));
                     
-            indexCurrentState = strcmp(obj.param.List,sprintf('(%.2f,%.2f,%.2f)',CurrentState(1),CurrentState(2),CurrentState(3)));
-            
-            indexReachSet = obj.IndexSafeAndReachSet.reachIndex;
-            
-            if indexReachSet(indexCurrentState)
-                out = 1;
-            else
-                out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj);
+                    indexReachSet = obj.IndexSafeAndReachSet.reachIndex;
+                    
+                    if indexReachSet(indexCurrentState)
+                        out = 1;
+                    else
+                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj);
+                    end
+                case 'TCL'
+                    indexCurrentState = strcmp(obj.param.List,sprintf('(%.5f)',CurrentState));
+                    
+                    indexSafety = obj.IndexSafeSet;
+                    
+                    if ~indexSafety(indexCurrentState)
+                        out = 0;
+                    else
+                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj);
+                    end
+                    
+                otherwise
+                    NotImplemented();
             end
+            
             
         end
         
         function out = InnerOptimization(obj,x,u,NextValueFunc,StatePartitionObj)
             
             % Returns the value function for a given state-action pair (x,u) using the
-            % value function at the next iteration (NextValueFunc). 
+            % value function at the next iteration (NextValueFunc).
             
             TransitionProb = obj.param.TransitionProb; % vector with the transition probability matrix
-            L = length(TransitionProb); % number of states in the transition probability
+            L1 = length(TransitionProb); % number of states in the transition probability
+            L2 = length(TransitionProb{1});
             
-            if length(NextValueFunc) ~= length(TransitionProb{1}.ProbMeasure)
+            if length(NextValueFunc) ~= length(TransitionProb)
                 error('The dimension of the thrid argument is incorrect.') % outputs an error if L is inconsistent with the size of the input Z
             end
             
-            stringX = sprintf('(%.2f,%.2f,%.2f)',x(1),x(2),x(3)); % creating the string of the current state
-            stringU = sprintf('(%.2f,%.2f)',u(1),u(2)); % creating the string of the current action
+            switch obj.TypeOfVectorField
+                case 'Fishery'
+                    stringX = sprintf('(%.2f,%.2f,%.2f)',x(1),x(2),x(3)); % creating the string of the current state
+                    stringU = sprintf('(%.2f,%.2f)',u(1),u(2)); % creating the string of the current action
+                case 'TCL'
+                    stringX = sprintf('(%.5f)',x); % creating the string of the current state
+                    stringU = sprintf('(%.2f)',u); % creating the string of the current action
+                otherwise 
+                    NotImplemented();
+            end
+            
             
             key = false;
             i = 1;
-            TempPartition = StatePartitionObj.getValues.Partition; 
-                   
+            TempPartition = StatePartitionObj.getValues.Partition;
+            
             % Searching for the correct transition probability
-            while i <= L && ~key
-                if strcmp(TransitionProb{i}.State,stringX) && strcmp(TransitionProb{i}.Action,stringU) % if stringX and stringU matches with the information in the transition prob matrix
+            while i <= L1 && ~key
+                if strcmp(TransitionProb{i}{1}.State,stringX) % if stringX and stringU matches with the information in the transition prob matrix
                     key = true;
-                    ObjFunc = NextValueFunc;
-                    switch obj.AmbiguityType
-                        case 'NoAmbiguity'
-                            out = TransitionProb{i}.ProbMeasure'*ObjFunc; % value function at the current state-action pair
-                        case 'MomentAmbiguity'
-                            [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{i}.ProbMeasure,TempPartition.grid_x,'WithSigma');
-                            rhoMu = 2; rhoSigma = 2;
-                            OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);  
-                            out = AnalyseResults(OptPro,obj.AmbiguityType,[]);                        
-                        case 'WassersteinAmbiguity'
-                            ep = 0.1; CenterBall = TransitionProb{i}.ProbMeasure;
-                            OptPro = WassersteinAmbiguity(ep,ObjFunc,CenterBall);
-                            out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
-                        case 'KernelAmbiguity'
-                            ep = 0.01; CenterBall = TransitionProb{i}.ProbMeasure;
-                            OptPro = KernelBasedAmbiguity(ep,ObjFunc,CenterBall);
-                            OptPro.gamma = 1;  OptPro.CurrentState = x;
-                            OptPro.Input = u; OptPro.m = 1000; OptPro.param = obj.param;
-                            out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj);
-                        case 'KLdivAmbiguity'
-                            ep = 0.01; CenterBall = TransitionProb{i}.ProbMeasure;
-                            OptPro = KLdivAmbiguity(ep,ObjFunc,CenterBall);
-                            out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
-                        otherwise
-                            error('This type of ambiguity has not been implemented. Please change the field AmbiguityType to a valid type.');
-                    end
+                    index1 = i;
                 end
                 i = i+1;
             end
@@ -296,37 +307,108 @@ classdef ComputeValueFunction
                 error('The input-action pair is not a member of the transition probability')
             end
             
+            key = false;
+            i = 1;
+            
+            while i<= L2 && ~key
+                if strcmp(TransitionProb{index1}{i}.Action,stringU) % if stringX and stringU matches with the information in the transition prob matrix
+                    key = true;
+                    index2 = i;
+                end
+                i = i+1;
+            end
+            
+            if ~key % outputs an error is there is no element in TransitionProb with the label (stringX,stringU)
+                error('The input-action pair is not a member of the transition probability')
+            end
+            
+            
+            ObjFunc = NextValueFunc;
+            switch obj.AmbiguityType
+                case 'NoAmbiguity'
+                    out = TransitionProb{index1}{index2}.ProbMeasure'*ObjFunc; % value function at the current state-action pair
+                case 'MomentAmbiguity'
+                    [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransitionProb{index1}{index2}.ProbMeasure,TempPartition.grid_x,'WithSigma',obj.TypeOfVectorField);
+                    rhoMu = 0.2; rhoSigma = 1.5;
+                    OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);
+                    out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
+                case 'WassersteinAmbiguity'
+                    ep = 0.1; CenterBall = TransitionProb{index1}{index2}.ProbMeasure;
+                    OptPro = WassersteinAmbiguity(ObjFunc,ep,CenterBall);
+                    out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
+                case 'KernelAmbiguity'
+                    ep = 0.01; CenterBall = TransitionProb{index1}{index2}.ProbMeasure;
+                    OptPro = KernelBasedAmbiguity(ObjFunc,ep,CenterBall);
+                    OptPro.gamma = 1;  OptPro.CurrentState = x;
+                    OptPro.Input = u; OptPro.m = 1000; OptPro.param = obj.param;
+                    out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj);
+                case 'KLdivAmbiguity'
+                    ep = 0.01; CenterBall = TransitionProb{index1}{index2}.ProbMeasure;
+                    OptPro = KLdivAmbiguity(ObjFunc,ep,CenterBall);
+                    out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
+                otherwise
+                    error('This type of ambiguity has not been implemented. Please change the field AmbiguityType to a valid type.');
+            end
+            
+            
         end
-
-
     end
 end
 
 
-function [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(Prob,Partition,type)
+function [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(Prob,Partition,type,TypeOfVectorField)
 
-SupportSet = Partition';
-SupportSet = [SupportSet,[-1;-1;-1]];
-
+switch TypeOfVectorField
+    case 'TCL'
+        SupportSet = Partition';
+        SupportSet = [SupportSet,28];
+        
+    case 'Fishery'
+        SupportSet = Partition';
+        SupportSet = [SupportSet,[-1;-1;-1]];
+    otherwise
+        NotImplemented();
+end
+        
 mu = SupportSet*Prob;
-
+        
 M = 1000;
 
-if strcmp(type,'WithSigma')
-    samples = discretesample(Prob,M);
-    sumSigma = zeros(3,3);
-
-    for i =1:M
-        x = SupportSet(:,samples(i));
-        temp = x - mu;
-        sumSigma = temp*temp' + sumSigma;
-    end
-
-    Sigma = sumSigma/M;
-else
-    Sigma = [];
+switch TypeOfVectorField
+    case 'Fishery'
+        if strcmp(type,'WithSigma')
+            samples = discretesample(Prob,M);
+            sumSigma = zeros(3,3);
+            
+            for i =1:M
+                x = SupportSet(:,samples(i));
+                temp = x - mu;
+                sumSigma = temp*temp' + sumSigma;
+            end
+            
+            Sigma = sumSigma/M;
+        else
+            Sigma = [];
+        end
+    case 'TCL'
+        if strcmp(type,'WithSigma')
+            samples = discretesample(Prob,M);
+            sumSigma = zeros(1,1);
+            
+            for i =1:M
+                x = SupportSet(:,samples(i));
+                temp = x - mu;
+                sumSigma = temp*temp' + sumSigma;
+            end
+            
+            Sigma = sumSigma/M;
+        else
+            Sigma = [];
+        end
+    otherwise
+        NotImplemented();
 end
-
+        
 end
 
 function value = AnalyseResults(ObjAmbiguity,type,StatePartitionObj)
@@ -336,7 +418,7 @@ if strcmp(type,'KernelAmbiguity')
     value = ObjAmbiguity.OptRes.opt_value;
 else
     ObjAmbiguity = ObjAmbiguity.SolveOptimization;
-    if (ObjAmbiguity.OptRes.SolverStatus.problem == 0) || (ObjAmbiguity.OptRes.SolverStatus.problem == 4)
+    if (ObjAmbiguity.OptRes.SolverStatus.problem == 0) || (ObjAmbiguity.OptRes.SolverStatus.problem == 4) || (ObjAmbiguity.OptRes.SolverStatus.problem == -1)
         value = ObjAmbiguity.OptRes.opt_value;
     else
         error('There is a problem when solving the optimization problem')

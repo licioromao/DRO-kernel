@@ -18,13 +18,19 @@ if ~BooleanSignal
             error('Type of Ambiguity not implemented')
     end
     
-    tic;
     ValueFunc = ComputeValueFunction(param,TypeOfVectorField,TypeOfAmbiguity);
     
-    ValueFunc = ValueFunc.getIndexReachAvoid(PartitionObj.getValues);
-    ValueFunc = ValueFunc.BackwardIteration(PartitionObj,InputPartition);
-    ValueFunc.time = toc;
+    switch TypeOfVectorField
+        case 'Fishery'
+            ValueFunc = ValueFunc.getIndexReachAvoid(PartitionObj.getValues);
+        case 'TCL'
+            ValueFunc = ValueFunc.getIndexSafety(PartitionObj.getValues);
+        otherwise
+            NotImplemented();
+    end
     
+    ValueFunc = ValueFunc.BackwardIteration(PartitionObj,InputPartition);
+      
     fprintf('Done\n');
 else
     ValueFunc = [];

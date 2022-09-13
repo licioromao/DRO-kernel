@@ -5,7 +5,7 @@ if find(indicesAndLength(:,1) < 0)
     error('All indices must be larger than zero');
 end
 
-if NumberOfNestedLoops ~= length(indicesAndLength)
+if NumberOfNestedLoops ~= size(indicesAndLength,1)
     close(barHandle);
     error('The first argument must be equal to the dimension of the second argument');
 end
