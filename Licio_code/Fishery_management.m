@@ -9,7 +9,7 @@
 
 
 
-function out = Fishery_management(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,AmbiguityTypes,FILE)
+function out = Fishery_management(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,StructAmbiguityTypes,FILE)
 
 TransitionProb = [];
 
@@ -85,32 +85,32 @@ end
 param.TransitionProb = TransitionProb;
 % Value function computation
 
-L = length(AmbiguityTypes);
+L = length(StructAmbiguityTypes);
 
 for i = 1:L
-    switch AmbiguityTypes{i}
+    switch StructAmbiguityTypes{i}.Name
         case 'NoAmbiguity'
             TotalTime = tic;
-            ValueFuncNoAmbiguity = MainValueFunctionIteration(Grid,InputPartition,'Fishery',AmbiguityTypes{i},exist('ValueFuncNoAmbiguity','var'),param);
+            ValueFuncNoAmbiguity = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncNoAmbiguity','var'),param);
             ValueFuncNoAmbiguity.time = toc(TotalTime);
         case 'MomentAmbiguity'
             TotalTime1 = tic;
-            ValueFuncMoment = MainValueFunctionIteration(Grid,InputPartition,'Fishery',AmbiguityTypes{i},exist('ValueFuncMoment','var'),param);
+            ValueFuncMoment = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncMoment','var'),param);
             ValueFuncMoment.time = toc(TotalTime1);
         case 'WassersteinAmbiguity'
             TotalTime2 = tic;
-            ValueFuncWasserstein = MainValueFunctionIteration(Grid,InputPartition,'Fishery',AmbiguityTypes{i},exist('ValueFuncWasserstein','var'),param);
+            ValueFuncWasserstein = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncWasserstein','var'),param);
             ValueFuncWasserstein.time = toc(TotalTime2);
         case 'KLdivAmbiguity'
             TotalTime3 = tic;
-            ValueFuncKL = MainValueFunctionIteration(Grid,InputPartition,'Fishery',AmbiguityTypes{i},exist('ValueFuncKL','var'),param);
+            ValueFuncKL = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncKL','var'),param);
             ValueFuncKL.time = toc(TotalTime3);
         case 'KernelAmbiguity'  
             TotalTime4 = tic;
-            ValueFuncKernel = MainValueFunctionIteration(Grid,InputPartition,'Fishery',AmbiguityTypes{i},exist('ValueFuncKernel','var'),param);
+            ValueFuncKernel = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncKernel','var'),param);
             ValueFuncKernel.time = toc(TotalTime4);
         otherwise
-            warning('%s has not been implemented. Jumping to the next string',AmbiguityTypes{i});
+            warning('%s has not been implemented. Jumping to the next string',StructAmbiguityTypes{i});
     end
 end
 

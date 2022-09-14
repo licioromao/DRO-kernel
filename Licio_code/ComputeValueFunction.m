@@ -7,6 +7,7 @@ classdef ComputeValueFunction
         TypeOfVectorField % This value stores the type of Vector field
         OptInput % This value stores the optimal action
         AmbiguityType % Type of ambiguity set
+        ParamAmbiguity % Stores the parameters of the Ambiguity type
         param % structure with all the parameters of the problem
         IndexSafeAndReachSet % Indices of the safe and reach set
         IndexSafeSet
@@ -15,7 +16,7 @@ classdef ComputeValueFunction
     end
     
     methods
-        function obj = ComputeValueFunction(ArgParam,TypeOfVectorField,TypeOfAmbiguity)
+        function obj = ComputeValueFunction(ArgParam,TypeOfVectorField,StructAmbiguityTypes)
             
             switch TypeOfVectorField
                 case 'Fishery'
@@ -30,7 +31,8 @@ classdef ComputeValueFunction
             obj.ValueFunction = zeros(NumberOfPoints + 1,ArgParam.N+1); % initializing the variable to store the value function
             obj.OptInput = zeros(NumberOfPoints + 1,ArgParam.N+1); % initializing the variable to store the optimal input
             obj.TypeOfVectorField = TypeOfVectorField;
-            obj.AmbiguityType = TypeOfAmbiguity;
+            obj.AmbiguityType = StructAmbiguityTypes.Name;
+            obj.ParamAmbiguity = StructAmbiguityTypes;
             obj.param = ArgParam;
             obj.IndexSafeAndReachSet = [];
             obj.N = ArgParam.N;
@@ -144,6 +146,8 @@ classdef ComputeValueFunction
             switch obj.TypeOfVectorField
                 case 'Fishery'
                     
+                    TimeHorizon = double(obj.N);
+                    
                     NumberOfPoints = obj.param.NumberOfPartitions(1)*obj.param.NumberOfPartitions(2)*obj.param.NumberOfPartitions(3); % number of points of the value function
                     NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
                     
@@ -156,10 +160,10 @@ classdef ComputeValueFunction
                     
                     % Creating a progress bar of the value function computation
                     hh = waitbar(0,'Initializing','Name','Computing Value Function...');
-                    total_iterations = double((obj.N)*NumberOfPoints*NumberInputs);
+                    total_iterations = TimeHorizon*(NumberOfPoints + 1)*NumberInputs;
                     fprintf('Total of iterations: %d \n',total_iterations);
                     
-                    for i = obj.N:-1:1
+                    for i = TimeHorizon:-1:1
                         NextValueFunc = obj.ValueFunction(:,i+1); % saving in a temporary variable the value function of the next step
                         ValueFunctionTemp = zeros(NumberOfPoints,1);
                         OptInputTemp = zeros(NumberOfPoints,1);
@@ -169,13 +173,14 @@ classdef ComputeValueFunction
                             
                             tic;
                             tempIterateFunc = @obj.iterateValueFunction;
-                            parfor uCounter = 1:NumberInputs
+                            for uCounter = 1:NumberInputs
                                 u = InputPartition(uCounter,:)'; % iterating over the number of inputs
                                 tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
                             end
                             Lastime = toc;
                             % Update waitbar
-                            iterates = RemainingIterations(2,[[obj.N-i+1;j],[obj.N;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
+                            tempInt = TimeHorizon - i +1;
+                            iterates = RemainingIterations(2,[[tempInt;j],[TimeHorizon;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
                             SecToGo = (total_iterations - iterates)*Lastime;
                             perc_iterates = iterates/total_iterations;
                             waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
@@ -189,6 +194,8 @@ classdef ComputeValueFunction
                     close(hh)
                 case 'TCL'
                     
+                    TimeHorizon = double(obj.N);
+                    
                     NumberOfPoints = obj.param.NumberOfPartitions; % number of points of the value function
                     NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
                     
@@ -201,10 +208,10 @@ classdef ComputeValueFunction
                     
                     % Creating a progress bar of the value function computation
                     hh = waitbar(0,'Initializing','Name','Computing Value Function...');
-                    total_iterations = double((obj.N)*NumberOfPoints*NumberInputs);
+                    total_iterations = TimeHorizon*(NumberOfPoints + 1)*NumberInputs;
                     fprintf('Total of iterations: %d \n',total_iterations);
                     
-                    for i = obj.N:-1:1
+                    for i = TimeHorizon:-1:1
                         NextValueFunc = obj.ValueFunction(:,i+1); % saving in a temporary variable the value function of the next step
                         ValueFunctionTemp = zeros(NumberOfPoints,1);
                         OptInputTemp = zeros(NumberOfPoints,1);
@@ -213,13 +220,14 @@ classdef ComputeValueFunction
                             tempValueFunc = zeros(NumberInputs,1);
                             tic;
                             tempIterateFunc = @obj.iterateValueFunction;
-                            parfor uCounter = 1:NumberInputs
+                            for uCounter = 1:NumberInputs
                                 u = InputPartition(uCounter); % iterating over the number of inputs
                                 tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj);	 % getting the new value for the value function
                             end
                             Lastime = toc;
                             % Update waitbar
-                            iterates = RemainingIterations(2,[[obj.N-i+1;j],[obj.N;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
+                            tempInt = double(TimeHorizon-i+1);
+                            iterates = RemainingIterations(2,[[tempInt;j],[TimeHorizon;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
                             SecToGo = (total_iterations - iterates)*Lastime;
                             perc_iterates = iterates/total_iterations;
                             waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
@@ -241,7 +249,7 @@ classdef ComputeValueFunction
             switch obj.TypeOfVectorField
                 case 'Fishery'
                     
-                    indexCurrentState = strcmp(obj.param.List,StringCurrentState);
+                    indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
                     
                     indexReachSet = obj.IndexSafeAndReachSet.reachIndex;
                     
@@ -251,7 +259,7 @@ classdef ComputeValueFunction
                         out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj);
                     end
                 case 'TCL'
-                    indexCurrentState = strcmp(obj.param.List,StringCurrentState);
+                    indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
                     
                     indexSafety = obj.IndexSafeSet;
                     
@@ -295,22 +303,43 @@ classdef ComputeValueFunction
                     out = TransXU{1}'*ObjFunc; % value function at the current state-action pair
                 case 'MomentAmbiguity'
                     TempPartition = StatePartitionObj.getValues.Partition;
+                    
+                    %Ambiguity parameters
+                    rhoMu = obj.ParamAmbiguity.rhoMu;
+                    rhoSigma = obj.ParamAmbiguity.rhoSigma;
+                    
                     [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransXU{1},TempPartition.grid_x,'WithSigma',obj.TypeOfVectorField);
-                    rhoMu = 0.2; rhoSigma = 1.5;
-                    OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet);
+                    
+                    OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoSigma,rhoMu,SupportSet);
                     out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                 case 'WassersteinAmbiguity'
-                    ep = 0.1; CenterBall = TransXU{1};
+                    CenterBall = TransXU{1};
+                    
+                    %Ambiguity parameters
+                    ep = obj.ParamAmbiguity.ep;
+                    
                     OptPro = WassersteinAmbiguity(ObjFunc,ep,CenterBall);
+                    
                     out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                 case 'KernelAmbiguity'
-                    ep = 0.01; CenterBall = TransXU{1};
-                    OptPro = KernelBasedAmbiguity(ObjFunc,ep,CenterBall,@GaussianKernel);
-                    OptPro.gamma = 1;  OptPro.CurrentState = x;
-                    OptPro.Input = u; OptPro.m = 1000; OptPro.param = obj.param;
+                    CenterBall = TransXU{1};
+                    
+                    OptPro = KernelBasedAmbiguity(ObjFunc,obj.ParamAmbiguity.ep,CenterBall,@GaussianKernel);
+                    
+                    % Ambiguity parameterrs
+                    OptPro.gamma = obj.ParamAmbiguity.gamma;
+                    OptPro.m = obj.ParamAmbiguity.m;
+                    
+                    OptPro.CurrentState = x;
+                    OptPro.Input = u;  OptPro.param = obj.param;
+                    
                     out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj);
                 case 'KLdivAmbiguity'
-                    ep = 0.01; CenterBall = TransXU{1};
+                    
+                    %Ambiguity parameters
+                    ep = obj.ParamAmbiguity.ep;
+                    
+                    CenterBall = TransXU{1};
                     OptPro = KLdivAmbiguity(ObjFunc,ep,CenterBall);
                     out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
                 otherwise

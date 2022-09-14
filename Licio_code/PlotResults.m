@@ -17,6 +17,7 @@ switch FILE(11:13)
             box on;
             Name{i} = tempVariable(1,i).name;
             plot(X,eval(Name{i}).ValueFunction(1:end-1,1),'LineWidth',1.5);
+            %plot(X,eval(Name{i}).ValueFunction(1:end-1,end-3),'LineWidth',1.5);
         end
         legend(Name)
     case 'Fis'

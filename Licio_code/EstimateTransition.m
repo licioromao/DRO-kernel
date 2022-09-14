@@ -54,7 +54,7 @@ switch TypeOfVectorField
                         % Iterate over all possible input combination
                         tempTime = tic;
                         tempParForProb = zeros(NumberOfPoints,Nu);
-                        parfor j =1:Nu
+                        for j =1:Nu
                             u = InputPartition(j,:); % selecting a particular allowable input                           
                             prob_xu = RunMonteCarlo(x,u,Grid,TypeOfVectorField,param); % empirical estimate of the transition probability
                             tempParForProb(:,j) = prob_xu;
@@ -119,7 +119,7 @@ switch TypeOfVectorField
                 tempTime2 = tic;
                 tempParForProb = zeros(NumberOfPoints,Nu);
                 
-                parfor j =1:Nu
+                for j =1:Nu
                     u = InputPartition(j,:); % selecting a particular allowable input                  
                     prob_xu = RunMonteCarlo(x,u,Grid,TypeOfVectorField,param); % empirical estimate of the transition probability
                     tempParForProb(:,j) = prob_xu;
@@ -290,7 +290,7 @@ switch TypeOfVectorField
         
         temp = zeros(Nx1*Nx2*Nx3 + 1,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
-        parfor i = 1:n_core
+        for i = 1:n_core
             tempParam = param;
             tempParam.MC = MCParallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
             temp(:,i) = RunMonteCarlo(x,u,Grid,TypeOfVectorField,tempParam);
@@ -303,7 +303,7 @@ switch TypeOfVectorField
         
         temp = zeros(N + 1,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
-        parfor i = 1:n_core
+        for i = 1:n_core
             tempParam = param;
             tempParam.MC = MCParallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
             temp(:,i) = RunMonteCarlo(x,u,Grid,TypeOfVectorField,tempParam);

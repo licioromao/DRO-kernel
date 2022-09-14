@@ -1,9 +1,9 @@
 % Function that computes the value function
 
-function ValueFunc = MainValueFunctionIteration(PartitionObj,InputPartition,TypeOfVectorField,TypeOfAmbiguity,BooleanSignal,param)
+function ValueFunc = MainValueFunctionIteration(PartitionObj,InputPartition,TypeOfVectorField,StructAmbiguityTypes,BooleanSignal,param)
 
 if ~BooleanSignal
-    switch TypeOfAmbiguity
+    switch StructAmbiguityTypes.Name
         case 'NoAmbiguity'
             fprintf('\nComputing value function (without ambiguity)...\n')
         case 'MomentAmbiguity'
@@ -18,7 +18,7 @@ if ~BooleanSignal
             error('Type of Ambiguity not implemented')
     end
     
-    ValueFunc = ComputeValueFunction(param,TypeOfVectorField,TypeOfAmbiguity);
+    ValueFunc = ComputeValueFunction(param,TypeOfVectorField,StructAmbiguityTypes);
     
     switch TypeOfVectorField
         case 'Fishery'
@@ -30,7 +30,7 @@ if ~BooleanSignal
     end
     
     ValueFunc = ValueFunc.BackwardIteration(PartitionObj,InputPartition);
-      
+    
     fprintf('Done\n');
 else
     ValueFunc = [];

@@ -32,7 +32,7 @@ classdef MomentBasedAmbiguity < Ambiguity
     
     methods
         % Constructor of the class
-        function obj = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoMu,rhoSigma,SupportSet)
+        function obj = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoSigma,rhoMu,SupportSet)
           
             CheckPSDandSymmetric(Sigma);
             
@@ -64,22 +64,22 @@ classdef MomentBasedAmbiguity < Ambiguity
             out.supportSet = obj.supportSet;
         end
         
-        function obj = setValues(obj,arg1,arg2,arg3,arg4,arg5,arg6)
+        function obj = setValues(obj,ObjFunc,Sigma,mu,rhoSigma,rhoMu,SupportSet)
             
             % This function modifies the private properties of the class.
             % It mimics the structure of its constructor 
             
-            [ObjFunc,MeanCenter,VarianceCenter,SupportSet,RhoMu,RhoSigma] = verifyArg(arg1,arg2,arg3,arg4,arg5,arg6);
-            
+            CheckPSDandSymmetric(Sigma);
+                        
             % Updating the values of the private fields
             obj.c = ObjFunc;
             
             obj.supportSet = SupportSet;
-            obj.mu = MeanCenter;
-            obj.sigma = VarianceCenter;
+            obj.mu = mu;
+            obj.sigma = Sigma;
             
-            obj.rhoMu = RhoMu;
-            obj.rhoSigma = RhoSigma; 
+            obj.rhoMu = rhoMu;
+            obj.rhoSigma = rhoSigma; 
             
         end
         
@@ -91,6 +91,7 @@ classdef MomentBasedAmbiguity < Ambiguity
             % this file
             
             m = size(obj.supportSet,2); % number of samples
+            n = size(obj.supportSet,1);
             
             x = sdpvar(m,1); % optimization variable -> this will result in the optimal distribution
                 
@@ -100,7 +101,7 @@ classdef MomentBasedAmbiguity < Ambiguity
             % moments
             Constraints = [Constraints, abs(obj.supportSet*x - obj.mu)  <= obj.rhoMu];
             temp = (obj.supportSet - obj.mu);
-            Constraints = [Constraints, temp*diag(x)*temp'<= obj.rhoSigma*obj.sigma];
+            Constraints = [Constraints, temp*diag(x)*temp'<= obj.rhoSigma*obj.sigma*eye(n)];
             
             options = sdpsettings('solver','mosek','verbose',0); % setting properties to solve the optimization variable
             
