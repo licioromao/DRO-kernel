@@ -97,18 +97,30 @@ for i = 1:L
             TotalTime1 = tic;
             ValueFuncMoment = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncMoment','var'),param);
             ValueFuncMoment.time = toc(TotalTime1);
+            
+            paramSave.rhoMu = StructAmbiguityTypes{i}.rhoMu;
+            paramSave.rhoSigma = StructAmbiguityTypes{i}.rhoSigma;
         case 'WassersteinAmbiguity'
             TotalTime2 = tic;
             ValueFuncWasserstein = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncWasserstein','var'),param);
             ValueFuncWasserstein.time = toc(TotalTime2);
+            
+            paramSave.ep = StructAmbiguityTypes{i}.ep;
+            
         case 'KLdivAmbiguity'
             TotalTime3 = tic;
             ValueFuncKL = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncKL','var'),param);
             ValueFuncKL.time = toc(TotalTime3);
+            
+            paramSave.ep = StructAmbiguityTypes{i}.ep;
+            
         case 'KernelAmbiguity'  
             TotalTime4 = tic;
             ValueFuncKernel = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncKernel','var'),param);
             ValueFuncKernel.time = toc(TotalTime4);
+            
+            paramSave.ep = StructAmbiguityTypes{i}.ep;
+            
         otherwise
             warning('%s has not been implemented. Jumping to the next string',StructAmbiguityTypes{i});
     end
@@ -117,11 +129,11 @@ end
 if nargin > 4
     save(FILE);
 else
-    FileName = getDateSaveFile(NumberOfPartitions,'Fishery'); % Getting the name of file based on the current date and time
-    save(FileName); % saving the results in ./results/
+    FileName = getDateSaveFile(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,'Fishery',paramSave); % Getting the name of file based on the current date and time
+    save(FileName.FullPath); % saving the results in ./results/
 end
 
-out = [];
+out = FileName;
 
 end
 

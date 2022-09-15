@@ -34,7 +34,7 @@ if ~BooleanSignal
     fprintf('Done\n');
 else
     ValueFunc = [];
-    switch TypeOfAmbiguity
+    switch StructAmbiguityTypes.Name
         case 'NoAmbiguity'
             warning('The variable %s already exists. Skipping to the next string...\n','ValueFuncNoAmbiguity');
         case 'MomentAmbiguity'

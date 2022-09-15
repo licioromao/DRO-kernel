@@ -23,8 +23,8 @@ alpha = exp(-h/(C*R));
 Al = 19; % Lower bound on the safe set
 Ah = 22; % Upper bound on the safe set
 
-mu = 0; sigma = 0.25^2; % Estimate on the mean and variance
-W = 100*[-0.5*sqrt(sigma/12),0.5*sqrt(sigma/12)];  % Support of the distribution
+mu = 0; sigma = 100*0.25^2; % Estimate on the mean and variance
+W = [-0.5*sqrt(sigma/12),0.5*sqrt(sigma/12)];  % Support of the distribution
 
 theta = 32; % Environment temperature
 p = 0.05; % success probability
@@ -88,31 +88,45 @@ for i = 1:L
             TotalTime1 = tic;
             ValueFuncMoment = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncMoment','var'),param);
             ValueFuncMoment.time = toc(TotalTime1);
+            
+            paramSave.rhoMu = StructAmbiguityTypes{i}.rhoMu;
+            paramSave.rhoSigma = StructAmbiguityTypes{i}.rhoSigma;
+             
         case 'WassersteinAmbiguity'
             TotalTime2 = tic;
             ValueFuncWasserstein = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncWasserstein','var'),param);
             ValueFuncWasserstein.time = toc(TotalTime2);
+            
+            paramSave.ep = StructAmbiguityTypes{i}.ep;
+                   
+            
         case 'KLdivAmbiguity'
             TotalTime3 = tic;
             ValueFuncKL = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncKL','var'),param);
             ValueFuncKL.time = toc(TotalTime3);
+            
+            paramSave.ep = StructAmbiguityTypes{i}.ep;
+            
         case 'KernelAmbiguity'  
             TotalTime4 = tic;
             ValueFuncKernel = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncKernel','var'),param);
             ValueFuncKernel.time = toc(TotalTime4);
+            
+            paramSave.ep = StructAmbiguityTypes{i}.ep;
+           
         otherwise
             warning('%s has not been implemented. Jumping to the next string',StructAmbiguityTypes{i});
-    end
+    end   
 end
 
 if nargin > 4
     save(FILE);
 else
-    FileName = getDateSaveFile(NumberOfPartitions,'TCL'); % Getting the name of file based on the current date and time
-    save(FileName); % saving the results in ./results/
+    FileName = getDateSaveFile(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,'TCL',paramSave); % Getting the name of file based on the current date and time
+    save(FileName.FullPath); % saving the results in the path specified by FILE
 end
 
-out = [];
+out = FileName;
 
 
 end
