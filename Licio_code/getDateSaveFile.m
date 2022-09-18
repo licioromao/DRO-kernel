@@ -14,7 +14,7 @@ if isfield(param,'rhoSigma')
     rhoSigma = param.rhoSigma;
 end
 
-DestinationFolder = sprintf('./results_%s',getenv('COMPUTERNAME'));
+DestinationFolder = sprintf('./results_%s',char(java.net.InetAddress.getLocalHost.getHostName));
 [status{1},msg{1}] = mkdir(DestinationFolder);
 
 switch TypeOfVectorField
