@@ -1,4 +1,4 @@
-
+%This is a small comment
 function out = EstimateTransition(Grid,InputPartition,param)
 
 % Iterates over all state-action pair and compute the transition
