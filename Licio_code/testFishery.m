@@ -43,7 +43,7 @@ for i1=1:N_Fishery
             for i4=1:N_Sigma
                 
                 timeIterarionKey = tic;
-                index = RemainingIterations(4,[[i1;i2;i3;i4],[N_TCL;N_ep;N_Mu;N_Sigma]],1,[]);
+                index = RemainingIterations(4,[[i1;i2;i3;i4],[N_Fishery;N_ep;N_Mu;N_Sigma]],1,[]);
                 
                 OuterLoopInfo.TotalIteration = total_iterations;
                 OuterLoopInfo.CurrentIteration = index;
