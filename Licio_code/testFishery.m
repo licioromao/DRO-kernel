@@ -1,5 +1,3 @@
-factor = 1000;
-
 % Empty to enable printing information of the script
 StructNoAmbiguity.Name = [];
 StructKernelAmbiguity.Name = [];
@@ -7,15 +5,15 @@ StructMomentAmbiguity.Name = [];
 StructKLdivAmbiguity.Name = [];
 
 % Time horizon
-N = int16(2);
+N = int16(10);
 
 % Partition of the state space
-FisheryPartition = [2,2,2];
+FisheryPartition = [15,15,15];
 
-mFishery = [200];
+mFishery = [2000];
 ep = [0.1];
-rhoMu = [10];
-rhoSigma = [5];
+rhoMu = [300];
+rhoSigma = [50];
 
 N_Fishery = size(mFishery,2);
 N_ep = size(ep,2);
@@ -69,7 +67,7 @@ for i1=1:N_Fishery
                 
                 %Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructKLdivAmbiguity,StructNoAmbiguity,StructMomentAmbiguity,StructKernelAmbiguity});
                 %Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructNoAmbiguity,StructKernelAmbiguity});
-                Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructNoAmbiguity,StructMomentAmbiguity},OuterLoopInfo);
+                Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructMomentAmbiguity,StructNoAmbiguity},OuterLoopInfo);
 
 %                 IterationsToGo = (total_iterations - index);
 %                 perc_iterates = index/total_iterations;

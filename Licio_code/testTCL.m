@@ -1,5 +1,3 @@
-factor = 1000;
-
 % Empty to enable printing information of the script
 StructNoAmbiguity.Name = [];
 StructKernelAmbiguity.Name = [];
@@ -7,15 +5,15 @@ StructMomentAmbiguity.Name = [];
 StructKLdivAmbiguity.Name = [];
 
 % Time horizon
-N = int16(2);
+N = int16(8);
 
 % Number of points between 18 and 24 degree 
-TCLpartition = 25;
+TCLpartition = 2000;
 
-mTCL = 500;
-ep = 0.001;
-rhoMu = [0.1,0.5];
-rhoSigma = [1,2];
+mTCL = 5000;
+ep = [0.001,0.01,0.1,1];
+rhoMu = [0.1,0.5,0.7];
+rhoSigma = [0.5,1,2,5];
 
 N_TCL = size(mTCL,2);
 N_ep = size(ep,2);
