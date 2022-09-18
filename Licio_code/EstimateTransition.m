@@ -91,7 +91,7 @@ switch TypeOfVectorField
                             
                             tempTime1 = tic;
                             
-                            prob_xu = RunMonteCarloParallel(x,u,Grid,TypeOfVectorField,eval(getenv('NUMBER_OF_PROCESSORS')),param); % empirical estimate of the transition probability using parallel computation
+                            prob_xu = RunMonteCarloParallel(x,u,Grid,TypeOfVectorField,12,param); % empirical estimate of the transition probability using parallel computation
                             
                             indexTrans = RemainingIterations(4,[[i1;i2;i3;j],[Nx1;Nx2;Nx3;Nu]],1,[]);
                             tempValues{indexTrans} = prob_xu;
@@ -181,7 +181,7 @@ switch TypeOfVectorField
                                       
                     tempTime3 = tic;
                     
-                    prob_xu = RunMonteCarloParallel(x,u,Grid,TypeOfVectorField,eval(getenv('NUMBER_OF_PROCESSORS')),param); % empirical estimate of the transition probability using parallel computation
+                    prob_xu = RunMonteCarloParallel(x,u,Grid,TypeOfVectorField,12,param); % empirical estimate of the transition probability using parallel computation
                     
                     indexTrans = RemainingIterations(2,[[i;j],[N;Nu]],1,[]);
                     tempValues{indexTrans} = prob_xu;
