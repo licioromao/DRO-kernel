@@ -1,8 +1,8 @@
-function out = TCL(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,StructAmbiguityTypes,FILE)
+function out = TCL(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,StructAmbiguityTypes,OuterLoopInfo,FILE)
 
 TransitionProb = [];
 
-if nargin > 4
+if nargin > 5
     load(FILE,'TransitionProb')
     load(FILE,'-regexp','ValueFunc*');
 else
@@ -39,6 +39,8 @@ param.h = h;
 param.p = p;
 param.SafeSet = [Al,Ah];
 param.N = int8(TimeHorizon);
+param.OuterLoopInfo = OuterLoopInfo;
+param.OuterLoopInfo.StringAmbiguity = StructAmbiguityTypes; % THIS IS BAD PRACTICE SINCE I AM ALSO SHARING AMBIGUITY PARAMETERS
 
 pd = makedist('Normal','mu',mu,'sigma',sigma);
 pd_truncated = truncate(pd,W(1),W(2));
@@ -119,7 +121,7 @@ for i = 1:L
     end   
 end
 
-if nargin > 4
+if nargin > 5
     save(FILE);
 else
     FileName = getDateSaveFile(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,'TCL',paramSave); % Getting the name of file based on the current date and time

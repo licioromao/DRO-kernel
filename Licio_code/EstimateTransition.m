@@ -41,9 +41,9 @@ switch TypeOfVectorField
         
         NumberOfPoints = Nx1*Nx2*Nx3 + 1;
         tempValues = cell(Nx1*Nx2*Nx3*Nu + 1,1);
-        
-        h = waitbar(0,'Initializing','Name','Generating Transition probabilities...'); % Plotting a bar to check the progress
+       
         total_iterations = Nx1*Nx2*Nx3*Nu; % total number of remaining iterations
+        PrintEstimateTransitionProb(total_iterations,0,0);
         
         for i1 = 1:Nx1
             for i2 = 1:Nx2
@@ -69,13 +69,23 @@ switch TypeOfVectorField
                         Lastime = toc(tempTime);
                         
                         % The two lines below updates the progress bar
-                        index = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],Nu,h);
-                        SecToGo = (total_iterations - index)*Lastime;
-                        waitbar(index/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',index/total_iterations,SecToGo));
+                        index = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],Nu,[]);
+                        
+                        if (NumberOfPoints-1)/Nu < 100
+                            if mod(i1+i2+i3,50) == 0
+                                PrintEstimateTransitionProb(total_iterations,index,50*Lastime);
+                            end
+                        else
+                            if mod(i1+i2+i3,50) == 0
+                                PrintEstimateTransitionProb(total_iterations,index,50*Lastime);
+                            end
+                        end
                         
                     else % if number of MC simulation is larger than 100, we will leverage parallel computation
                         
                         % Iterate over all possible input combination
+                        sumTime = 0;
+                        sumIt = 0;
                         for j =1:Nu
                             u = InputPartition(j,:); % selecting a particular allowable input
                             
@@ -87,9 +97,26 @@ switch TypeOfVectorField
                             tempValues{indexTrans} = prob_xu;
                             
                             Lastime = toc(tempTime1);
-                            % The two lines below updates the progress bar
-                            SecToGo = (total_iterations - indexTrans)*Lastime;
-                            waitbar(indexTrans/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',indexTrans/total_iterations,SecToGo));
+                            sumTime = sumTime + Lastime;
+                            sumIt = sumIt + 1;
+                            
+                            if (NumberOfPoints-1)/Nu < 100
+                                if mod(i1+i2+i3,5) == 0
+                                    PrintEstimateTransitionProb(total_iterations,indexTrans,sumTime/sumIt);
+                                    sumTime = 0;
+                                    sumIt = 0;
+                                end
+                            else
+                                if mod(i1+i2+i3,15) == 0
+                                    PrintEstimateTransitionProb(total_iterations,indexTrans,sumTime/sumIt);
+                                    sumTime = 0;
+                                    sumIt = 0;
+                                end
+                            end
+                            
+%                             % The two lines below updates the progress bar
+%                             SecToGo = (total_iterations - indexTrans)*Lastime;
+%                             waitbar(indexTrans/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',indexTrans/total_iterations,SecToGo));
                         end
                     end
                 end
@@ -107,8 +134,8 @@ switch TypeOfVectorField
         NumberOfPoints = N + 1;
         tempValues = cell(N*Nu + 1,1);
                
-        h = waitbar(0,'Initializing','Name','Generating Transition probabilities...'); % Plotting a bar to check the progress
         total_iterations = N*Nu; % total number of remaining iterations
+        PrintEstimateTransitionProb(total_iterations,0,0);
               
         
         for i = 1:N
@@ -134,10 +161,18 @@ switch TypeOfVectorField
                 Lastime = toc(tempTime2);
                 
                 % The two lines below updates the progress bar
-                index = RemainingIterations(1,[i,N],Nu,h);
-                SecToGo = (total_iterations - index)*Lastime;
-                waitbar(index/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',index/total_iterations,SecToGo));
+                index = RemainingIterations(1,[i,N],Nu,[]);
                 
+                if (NumberOfPoints-1)/Nu < 100
+                    if mod(i,5) == 0
+                        PrintEstimateTransitionProb(total_iterations,index,5*Lastime);
+                    end
+                else
+                    if mod(i,15) == 0
+                        PrintEstimateTransitionProb(total_iterations,index,15*Lastime);
+                    end
+                end
+                      
             else % if number of MC simulation is larger than 100, we will leverage parallel computation
                 
                 % Iterate over all possible input combination
@@ -153,9 +188,15 @@ switch TypeOfVectorField
                                         
                     Lastime = toc(tempTime3);
                     
-                    % The two lines below updates the progress bar
-                    SecToGo = (total_iterations - indexTrans)*Lastime;
-                    waitbar(indexTrans/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',indexTrans/total_iterations,SecToGo));
+                    if (NumberOfPoints-1)/Nu < 100
+                        if mod(i,5) == 0
+                            PrintEstimateTransitionProb(total_iterations,indexTrans,5*Lastime);
+                        end
+                    else
+                        if mod(i,15) == 0
+                            PrintEstimateTransitionProb(total_iterations,indexTrans,15*Lastime);
+                        end
+                    end
                 end
             end
         end
@@ -163,7 +204,6 @@ end
 
 out = containers.Map(List,tempValues);
 
-delete(h) % deleting the progress bar
 
 end
 

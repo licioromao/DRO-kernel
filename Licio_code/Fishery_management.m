@@ -9,11 +9,11 @@
 
 
 
-function out = Fishery_management(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,StructAmbiguityTypes,FILE)
+function out = Fishery_management(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,StructAmbiguityTypes,OuterLoopInfo,FILE)
 
 TransitionProb = [];
 
-if nargin > 4
+if nargin > 5
     load(FILE,'TransitionProb')
     load(FILE,'-regexp','ValueFunc*');
 else
@@ -64,6 +64,9 @@ param.v = v;
 param.lambda = lambda;
 param.gamma = gamma;
 param.MC = NumberOfMonteCarlo;
+param.OuterLoopInfo = OuterLoopInfo;
+param.OuterLoopInfo.StringAmbiguity = StructAmbiguityTypes; % THIS IS BAD PRACTICE SINCE I AM ALSO SHARING AMBIGUITY PARAMETERS
+
 
 % Partitioning the state space
 
@@ -126,7 +129,7 @@ for i = 1:L
     end
 end
 
-if nargin > 4
+if nargin > 5
     save(FILE);
 else
     FileName = getDateSaveFile(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,'Fishery',paramSave); % Getting the name of file based on the current date and time

@@ -136,6 +136,9 @@ classdef ComputeValueFunction
         
         function obj = BackwardIteration(obj,StatePartitionObj,InputPartition)
             
+            OuterLoopInfo = obj.param.OuterLoopInfo;
+            CurrentAmbiguity = obj.AmbiguityType;
+            
             % Testing the value of N
             if isempty(obj.N)
                 error('Please, initialize the field N before calling this function');
@@ -158,15 +161,22 @@ classdef ComputeValueFunction
                     obj.ValueFunction(obj.IndexSafeAndReachSet.reachIndex,obj.N+1) = 1; % initializing the value function on the reach set
                     Grid_x = StatePartitionObj.getValues.Partition.grid_x;
                     
-                    % Creating a progress bar of the value function computation
-                    hh = waitbar(0,'Initializing','Name','Computing Value Function...');
+%                    % Creating a progress bar of the value function computation
+%                     hh = waitbar(0,'Initializing','Name','Computing Value Function...');
+%                     total_iterations = TimeHorizon*(NumberOfPoints + 1)*NumberInputs;
+%                     fprintf('Total of iterations: %d \n',total_iterations);
+                    
+                    % Creating a progress bar of the value function computation 
                     total_iterations = TimeHorizon*(NumberOfPoints + 1)*NumberInputs;
-                    fprintf('Total of iterations: %d \n',total_iterations);
+                    
+                    PrintInnerLoop(total_iterations,0,0,CurrentAmbiguity,OuterLoopInfo);
                     
                     for i = TimeHorizon:-1:1
                         NextValueFunc = obj.ValueFunction(:,i+1); % saving in a temporary variable the value function of the next step
                         ValueFunctionTemp = zeros(NumberOfPoints,1);
                         OptInputTemp = zeros(NumberOfPoints,1);
+                        sumTime = 0;
+                        sumIt = 0;
                         for j = 1:NumberOfPoints % iterates over the number of points
                             x = Grid_x(j,:)'; % getting the current state to be updated
                             tempValueFunc = zeros(NumberInputs,1);
@@ -178,12 +188,25 @@ classdef ComputeValueFunction
                                 tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj); % getting the new value for the value function
                             end
                             Lastime = toc;
+                            sumTime = sumTime + Lastime;
+                            sumIt = sumIt + 1;
                             % Update waitbar
                             tempInt = TimeHorizon - i +1;
-                            iterates = RemainingIterations(2,[[tempInt;j],[TimeHorizon;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
-                            SecToGo = (total_iterations - iterates)*Lastime;
-                            perc_iterates = iterates/total_iterations;
-                            waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
+                            iterates = RemainingIterations(2,[[tempInt;j],[TimeHorizon;NumberOfPoints]],NumberInputs,[]); % This is the number of iterations completes so far. The name of the matlab function may be misleading
+                            
+                            if NumberOfPoints > 200
+                                if mod(j,floor(0.01*NumberOfPoints)) == 0
+                                    PrintInnerLoop(total_iterations,iterates,sumTime/sumIt,CurrentAmbiguity,OuterLoopInfo);
+                                    sumTime = 0;
+                                    sumIt = 0;
+                                end
+                            else
+                                if (mod(j,2) == 0)
+                                    PrintInnerLoop(total_iterations,iterates,sumTime/sumIt,CurrentAmbiguity,OuterLoopInfo);
+                                    sumTime = 0;
+                                    sumIt = 0;
+                                end
+                            end
                             
                             [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
                         end
@@ -191,7 +214,6 @@ classdef ComputeValueFunction
                         obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
                         obj.OptInput(1:end -1,i) = OptInputTemp;
                     end
-                    close(hh)
                 case 'TCL'
                     
                     TimeHorizon = double(obj.N);
@@ -206,15 +228,18 @@ classdef ComputeValueFunction
                     obj.ValueFunction(obj.IndexSafeSet,obj.N+1) = 1; % initializing the value function on the reach set
                     Grid_x = StatePartitionObj.getValues.Partition.grid_x;
                     
-                    % Creating a progress bar of the value function computation
-                    hh = waitbar(0,'Initializing','Name','Computing Value Function...');
+                    % Creating a progress bar of the value function computation 
                     total_iterations = TimeHorizon*(NumberOfPoints + 1)*NumberInputs;
-                    fprintf('Total of iterations: %d \n',total_iterations);
+                    PrintInnerLoop(total_iterations,0,0,CurrentAmbiguity,OuterLoopInfo);
                     
                     for i = TimeHorizon:-1:1
                         NextValueFunc = obj.ValueFunction(:,i+1); % saving in a temporary variable the value function of the next step
                         ValueFunctionTemp = zeros(NumberOfPoints,1);
                         OptInputTemp = zeros(NumberOfPoints,1);
+                        
+                        sumTime = 0;
+                        sumIt = 0;
+                        
                         for j = 1:NumberOfPoints % iterates over the number of points
                             x = Grid_x(j); % getting the current state to be updated
                             tempValueFunc = zeros(NumberInputs,1);
@@ -225,12 +250,26 @@ classdef ComputeValueFunction
                                 tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj);	 % getting the new value for the value function
                             end
                             Lastime = toc;
+                            sumTime = sumTime + Lastime;
+                            sumIt = sumIt + 1;
                             % Update waitbar
                             tempInt = double(TimeHorizon-i+1);
-                            iterates = RemainingIterations(2,[[tempInt;j],[TimeHorizon;NumberOfPoints]],NumberInputs,hh); % This is the number of iterations completes so far. The name of the matlab function may be misleading
-                            SecToGo = (total_iterations - iterates)*Lastime;
-                            perc_iterates = iterates/total_iterations;
-                            waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
+                            iterates = RemainingIterations(2,[[tempInt;j],[TimeHorizon;NumberOfPoints]],NumberInputs,[]); % This is the number of iterations completes so far. The name of the matlab function may be misleading
+                            
+                            if NumberOfPoints > 200
+                                if mod(j,floor(0.01*NumberOfPoints)) == 0
+                                    PrintInnerLoop(total_iterations,iterates,sumTime/sumIt,CurrentAmbiguity,OuterLoopInfo);
+                                    sumTime = 0;
+                                    sumIt = 0;
+                                end
+                            else
+                                if (mod(j,10) == 0)
+                                    PrintInnerLoop(total_iterations,iterates,sumTime/sumIt,CurrentAmbiguity,OuterLoopInfo);
+                                    sumTime = 0;
+                                    sumIt = 0;
+                                end
+                            end
+                            %waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
                             
                             [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
                         end
@@ -238,7 +277,6 @@ classdef ComputeValueFunction
                         obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
                         obj.OptInput(1:end -1,i) = OptInputTemp;
                     end
-                    close(hh)
             end
         end
         
