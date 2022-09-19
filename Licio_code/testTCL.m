@@ -8,12 +8,12 @@ StructKLdivAmbiguity.Name = [];
 N = int16(8);
 
 % Number of points between 18 and 24 degree 
-TCLpartition = 2000;
+TCLpartition = 20;
 
 mTCL = 5000;
-ep = [0.001,0.01,0.1,1];
-rhoMu = [0.1,0.5,0.7];
-rhoSigma = [0.5,1,2,5];
+ep = [0.1];
+rhoMu = [0.7];
+rhoSigma = [0.5];
 
 N_TCL = size(mTCL,2);
 N_ep = size(ep,2);
