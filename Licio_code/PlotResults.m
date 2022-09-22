@@ -1,25 +1,54 @@
-function L = PlotResults(FILE)
+function [] = PlotResults(OuputOfMonteCarloSimulationFunc)
 
-load(FILE,'-regexp','ValueFunc*');
-load(FILE,'Grid');
+NumberOfPoints = OuputOfMonteCarloSimulationFunc{end}.PartitionSize;
+m = OuputOfMonteCarloSimulationFunc{end}.m;
+ep = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.ep;
+rhoMu = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.rhoMu;
+rhoSigma = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.rhoSigma;
 
-L = size(whos,1) - 2;
+TypeOfVectorField = OuputOfMonteCarloSimulationFunc{1}.TypeOfVectorField;
+Grid = OuputOfMonteCarloSimulationFunc{end}.Partition;
+AmbiguityParam = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam;
 
-switch FILE(11:13)
+L = length(OuputOfMonteCarloSimulationFunc) - 1;
+
+switch TypeOfVectorField
     case 'TCL'
-        X = Grid.getValues.Partition.X
-        tempVariable(:) = whos('-regexp','ValueFunc*');
+        X = Grid.getValues.Partition.X;
         figure;
         hold on
         Name = cell(L,1);
         for i =1:L
             grid on;
             box on;
-            Name{i} = tempVariable(1,i).name;
-            plot(X,eval(Name{i}).ValueFunction(1:end-1,1),'LineWidth',1.5);
+            Name{i} = OuputOfMonteCarloSimulationFunc{i}.AmbiguityType;
+            ValueFunction = OuputOfMonteCarloSimulationFunc{i}.ValueFunction;
+            plot(X,ValueFunction,'LineWidth',1.5);
             %plot(X,eval(Name{i}).ValueFunction(1:end-1,end-3),'LineWidth',1.5);
         end
         legend(Name)
+        
+        TitleString = sprintf('TCL with Partition = %d, m=%d, ep=%.2f, rhoMu = %.2f, rhoSigma = %.2f',NumberOfPoints,m,ep,rhoMu,rhoSigma);
+        title(TitleString)
+        
+        figure;
+        hold on
+        Name = cell(L+1,1);
+        for i =1:L
+            grid on;
+            box on;
+            Name{i} = OuputOfMonteCarloSimulationFunc{i}.AmbiguityType;
+            ValueFunction = OuputOfMonteCarloSimulationFunc{i}.ValueFunction;
+            EmpValueFunction = OuputOfMonteCarloSimulationFunc{i}.EmpiricalValueFunc;
+            plot(ValueFunction,EmpValueFunction,'o','LineWidth',1.5);
+            %plot(X,eval(Name{i}).ValueFunction(1:end-1,end-3),'LineWidth',1.5);
+        end
+        Name{L+1} = '';
+        plot(0:0.05:1,0:0.05:1,'--','LineWidth',1.5)
+        legend(Name)
+        title(TitleString)
+        
+        
     case 'Fis'
         Partition = Grid.getValues.Partition;
         Name = cell(L,1);

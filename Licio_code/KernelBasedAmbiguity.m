@@ -37,7 +37,7 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             
             tempKernel = obj.KernelFunc(tempPartition.grid_x',tempPartition.grid_x',obj.gamma,alpha);                       
                      
-            obj.OptRes.opt_value = max(0,alpha'*obj.c - (obj.epsilon)*tempKernel);
+            obj.OptRes.opt_value = max(0,alpha'*obj.c - (obj.epsilon)*tempKernel-2*obj.epsilon);
             
             %fprintf('Test prob: %.2f\n\n',(tempXSum.*alpha)'*obj.c - (obj.epsilon)*sqrt(SumKernel))
             

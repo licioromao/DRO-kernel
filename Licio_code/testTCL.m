@@ -8,9 +8,9 @@ StructKLdivAmbiguity.Name = [];
 N = int16(8);
 
 % Number of points between 18 and 24 degree 
-TCLpartition = 20;
+TCLpartition = 150;
 
-mTCL = 5000;
+mTCL = 10000;
 ep = [0.1];
 rhoMu = [0.7];
 rhoSigma = [0.5];
@@ -69,6 +69,8 @@ for i1=1:N_TCL
         end
     end
 end
+
+save('Results/paths.mat')
 
 
 
