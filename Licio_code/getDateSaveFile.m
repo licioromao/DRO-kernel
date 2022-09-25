@@ -37,7 +37,7 @@ switch TypeOfVectorField
 end
 
 if ~isempty(ep)
-    AppendPath = sprintf('/ep_%.2f',ep);
+    AppendPath = sprintf('/ep_%.4f',ep);
     DirectoryPath = strcat(DirectoryPath,AppendPath);
     [status{4},msg{4}] = mkdir(DirectoryPath);
     if ~isempty(rhoMu)

@@ -8,9 +8,9 @@ StructKLdivAmbiguity.Name = [];
 N = int16(10);
 
 % Partition of the state space
-FisheryPartition = [15,15,15];
+FisheryPartition = [6,6,6];
 
-mFishery = [2000];
+mFishery = [110];
 ep = [0.1];
 rhoMu = [300];
 rhoSigma = [50];

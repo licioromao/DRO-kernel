@@ -1,25 +1,18 @@
-%This is a small comment
 function out = EstimateTransition(Grid,InputPartition,param)
 
-% Iterates over all state-action pair and compute the transition
-% probability.
+% This function iterates over all state-action pairs and computes the
+% transition probability.
 %
 %
-%   Input: Grid -- output of the generatePartition function
+%   Input: Grid -- This is a StateParition object.
 %          InputPartition -- output of the generateInput partition function
 %          TypeOfVectorFields -- This is the type of vector fields.
 %          Currently we have implemented TCL and Fishery.
-%          param -- a structure with all the field required by the
+%          param -- a structure with all parameters of the problem
 %
 %
-%   Output: out -- a cell array of structure of dimension equal the number of elements
-%                  in the partition plus one (unsafe state), where each element contains the
-%                  following fields:
-%
-%                  State -- String with the name of the state
-%                  Action -- String identifying the action
-%                  ProbMeasure -- an estimate of the transition probability
-%                  P(.|x,u)
+%   Output: TBD
+
 
 tempStatePartition = Grid.getValues.Partition;
 TypeOfVectorField = Grid.getValues.TypeOfVectorField;
@@ -39,11 +32,15 @@ switch TypeOfVectorField
         
         MC = param.MC; % Number of Monte Carlo simulation for each transition
         
-        NumberOfPoints = Nx1*Nx2*Nx3 + 1;
-        tempValues = cell(Nx1*Nx2*Nx3*Nu + 1,1);
+        NumberOfPoints = Nx1*Nx2*Nx3;
+        tempValues = cell(Nx1*Nx2*Nx3*Nu,1);
        
         total_iterations = Nx1*Nx2*Nx3*Nu; % total number of remaining iterations
         PrintEstimateTransitionProb(total_iterations,0,0);
+        
+        % Variable to estimate the amount of remaining time
+        sumTime = 0;
+        sumIt = 0;
         
         for i1 = 1:Nx1
             for i2 = 1:Nx2
@@ -65,19 +62,26 @@ switch TypeOfVectorField
                         for j=Nu-1:-1:0
                             tempValues{indexTrans - j} = tempParForProb(:,Nu-j);
                         end
-                                                
+                        
                         Lastime = toc(tempTime);
+                        sumTime = sumTime + Lastime;
+                        sumIt = sumIt + 1;
                         
                         % The two lines below updates the progress bar
                         index = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],Nu,[]);
                         
+                        % Printing results on the screen
                         if (NumberOfPoints-1)/Nu < 100
-                            if mod(i1+i2+i3,50) == 0
-                                PrintEstimateTransitionProb(total_iterations,index,50*Lastime);
+                            if mod(i1+i2+i3,5) == 0
+                                PrintEstimateTransitionProb(total_iterations,index,sumTime/sumIt);
+                                sumTime = 0;
+                                sumIt = 0;
                             end
                         else
-                            if mod(i1+i2+i3,50) == 0
-                                PrintEstimateTransitionProb(total_iterations,index,50*Lastime);
+                            if mod(i1+i2+i3,15) == 0
+                                PrintEstimateTransitionProb(total_iterations,index,sumTime/sumIt);
+                                sumTime = 0;
+                                sumIt = 0;
                             end
                         end
                         
@@ -100,6 +104,7 @@ switch TypeOfVectorField
                             sumTime = sumTime + Lastime;
                             sumIt = sumIt + 1;
                             
+                            % Printing on the screen
                             if (NumberOfPoints-1)/Nu < 100
                                 if mod(i1+i2+i3,5) == 0
                                     PrintEstimateTransitionProb(total_iterations,indexTrans,sumTime/sumIt);
@@ -114,9 +119,6 @@ switch TypeOfVectorField
                                 end
                             end
                             
-%                             % The two lines below updates the progress bar
-%                             SecToGo = (total_iterations - indexTrans)*Lastime;
-%                             waitbar(indexTrans/total_iterations,h,sprintf('%.5f completed. %.2f seconds to go.',indexTrans/total_iterations,SecToGo));
                         end
                     end
                 end
@@ -131,18 +133,23 @@ switch TypeOfVectorField
         
         MC = param.MC; % Number of Monte Carlo simulation for each transition
         
-        NumberOfPoints = N + 1;
-        tempValues = cell(N*Nu + 1,1);
+        NumberOfPoints = N;
+        tempValues = cell(N*Nu,1);
                
         total_iterations = N*Nu; % total number of remaining iterations
         PrintEstimateTransitionProb(total_iterations,0,0);
+        
+        
+        % Variables to estimate the ramining time
+        sumTime = 0;
+        sumIt = 0;
               
         
         for i = 1:N
             x = tempStatePartition.X(i); % Get the current state
             if MC <= 100 % if number of MC simulations if less than 100 do not use parallel computation
                 
-                % Iterate over all possible input combination
+                % Iterate over all possible inputs
                 tempTime2 = tic;
                 tempParForProb = zeros(NumberOfPoints,Nu);
                 
@@ -159,17 +166,24 @@ switch TypeOfVectorField
                 end
                 
                 Lastime = toc(tempTime2);
+                sumTime = sumTime + Lastime;
+                sumIt = sumIt + 1;
                 
                 % The two lines below updates the progress bar
                 index = RemainingIterations(1,[i,N],Nu,[]);
                 
+                % Printing on the screen
                 if (NumberOfPoints-1)/Nu < 100
-                    if mod(i,5) == 0
-                        PrintEstimateTransitionProb(total_iterations,index,5*Lastime);
+                    if mod(i+j,5) == 0
+                        PrintEstimateTransitionProb(total_iterations,index,sumTime/sumIt);
+                        sumTime = 0;
+                        sumIt = 0;
                     end
                 else
-                    if mod(i,15) == 0
-                        PrintEstimateTransitionProb(total_iterations,index,15*Lastime);
+                    if mod(i+j,15) == 0
+                        PrintEstimateTransitionProb(total_iterations,index,sumTime/sumIt);
+                        sumTime = 0;
+                        sumIt = 0;
                     end
                 end
                       
@@ -187,14 +201,21 @@ switch TypeOfVectorField
                     tempValues{indexTrans} = prob_xu;
                                         
                     Lastime = toc(tempTime3);
+                    sumTime = sumTime + Lastime;
+                    sumIt = sumIt + 1;
                     
+                    % Printing on the screen
                     if (NumberOfPoints-1)/Nu < 100
-                        if mod(i,5) == 0
-                            PrintEstimateTransitionProb(total_iterations,indexTrans,5*Lastime);
+                        if mod(i+j,5) == 0
+                            PrintEstimateTransitionProb(total_iterations,indexTrans,sumTime/sumIt);
+                            sumTime = 0;
+                            sumIt = 0;
                         end
                     else
-                        if mod(i,15) == 0
-                            PrintEstimateTransitionProb(total_iterations,indexTrans,15*Lastime);
+                        if mod(i+j,15) == 0
+                            PrintEstimateTransitionProb(total_iterations,indexTrans,sumTime/sumIt);
+                            sumTime = 0;
+                            sumIt = 0;
                         end
                     end
                 end
@@ -222,7 +243,7 @@ function out = RunMonteCarlo(x,u,Grid,TypeOfVectorField,param)
 %          TypeOfVectorFields -- Type of the vector field.
 %          param -- structure with the following parameters:
 %                   MC -- number of Monte Carlo simulation
-%                   List -- List with the name of the states of the MDP
+%                   ListX -- List with the name of the states of the MDP
 %                   all fields required by generateNoise,
 %                   computeElementPartition functions defined above
 
@@ -252,15 +273,8 @@ switch TypeOfVectorField
             temp = Grid.computeElementPartition(x,u,noise,param);
             indexMemberPartition = temp.elementPartition;
             
-            if ~isempty(indexMemberPartition) % if an element if found
-                
-                index = RemainingIterations(3,[indexMemberPartition,[Nx1;Nx2;Nx3]],1,[]);
-                
-                tempValues{index} = tempValues{index} + 1/MC;
-            else % if the transition happens to a state outside the safe region
-                tempValues{end} = tempValues{end} + 1/MC;
-            end
-            
+            index = RemainingIterations(3,[indexMemberPartition,[Nx1;Nx2;Nx3]],1,[]); % getting the index of the current state
+            tempValues{index} = tempValues{index} + 1/MC;
         end
         
     case 'TCL'
@@ -274,15 +288,8 @@ switch TypeOfVectorField
             temp = Grid.computeElementPartition(x,u,noise,param);
             indexMemberPartition = temp.elementPartition;
             
-            if ~isempty(indexMemberPartition) % if an element if found
-                
-                index = RemainingIterations(1,[indexMemberPartition,N],1,[]);
-                
-                tempValues{index} = tempValues{index} + 1/MC;
-            else % if the transition happens to a state outside the safe region
-                tempValues{end} = tempValues{end} + 1/MC;
-            end
-            
+            index = RemainingIterations(1,[indexMemberPartition,N],1,[]);
+            tempValues{index} = tempValues{index} + 1/MC;
         end
         
     otherwise
@@ -328,7 +335,7 @@ switch TypeOfVectorField
         Nx2 = size(tempStatePartition.X1,1);
         Nx3 = size(tempStatePartition.X1,3);
         
-        temp = zeros(Nx1*Nx2*Nx3 + 1,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
+        temp = zeros(Nx1*Nx2*Nx3,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
         parfor i = 1:n_core
             tempParam = param;
@@ -336,12 +343,12 @@ switch TypeOfVectorField
             temp(:,i) = RunMonteCarlo(x,u,Grid,TypeOfVectorField,tempParam);
         end
         
-        out = zeros(Nx1*Nx2*Nx3 + 1,1);
+        out = zeros(Nx1*Nx2*Nx3,1);
                
     case 'TCL'
         N = size(tempStatePartition.X,1);
         
-        temp = zeros(N + 1,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
+        temp = zeros(N,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
         parfor i = 1:n_core
             tempParam = param;
@@ -349,7 +356,7 @@ switch TypeOfVectorField
             temp(:,i) = RunMonteCarlo(x,u,Grid,TypeOfVectorField,tempParam);
         end
         
-        out = zeros(N + 1,1);
+        out = zeros(N,1);
         
     otherwise
         NotImplemented();

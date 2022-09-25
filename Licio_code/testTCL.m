@@ -8,10 +8,10 @@ StructKLdivAmbiguity.Name = [];
 N = int16(8);
 
 % Number of points between 18 and 24 degree 
-TCLpartition = 150;
+TCLpartition = 20;
 
-mTCL = 10000;
-ep = [0.1];
+mTCL = 1000;
+ep = [0.001,0.01,0.08,0.1];
 rhoMu = [0.7];
 rhoSigma = [0.5];
 
@@ -70,7 +70,9 @@ for i1=1:N_TCL
     end
 end
 
-save('Results/paths.mat')
+PathsString = sprintf('./Results/results_%s/TCL/paths.mat',char(java.net.InetAddress.getLocalHost.getHostName));
+
+save(PathsString);
 
 
 

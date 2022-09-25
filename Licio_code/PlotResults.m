@@ -8,7 +8,7 @@ rhoSigma = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.rhoSigma;
 
 TypeOfVectorField = OuputOfMonteCarloSimulationFunc{1}.TypeOfVectorField;
 Grid = OuputOfMonteCarloSimulationFunc{end}.Partition;
-AmbiguityParam = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam;
+%AmbiguityParam = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam;
 
 L = length(OuputOfMonteCarloSimulationFunc) - 1;
 
@@ -28,7 +28,7 @@ switch TypeOfVectorField
         end
         legend(Name)
         
-        TitleString = sprintf('TCL with Partition = %d, m=%d, ep=%.2f, rhoMu = %.2f, rhoSigma = %.2f',NumberOfPoints,m,ep,rhoMu,rhoSigma);
+        TitleString = sprintf('TCL with Partition = %d, m=%d, ep=%.4f, rhoMu = %.2f, rhoSigma = %.2f',NumberOfPoints,m,ep,rhoMu,rhoSigma);
         title(TitleString)
         
         figure;

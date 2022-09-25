@@ -28,8 +28,8 @@ classdef ComputeValueFunction
             end
             
             
-            obj.ValueFunction = zeros(NumberOfPoints + 1,ArgParam.N+1); % initializing the variable to store the value function
-            obj.OptInput = zeros(NumberOfPoints + 1,ArgParam.N+1); % initializing the variable to store the optimal input
+            obj.ValueFunction = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the value function
+            obj.OptInput = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input
             obj.TypeOfVectorField = TypeOfVectorField;
             obj.AmbiguityType = StructAmbiguityTypes.Name;
             obj.ParamAmbiguity = StructAmbiguityTypes;
@@ -59,15 +59,15 @@ classdef ComputeValueFunction
             ReachSet = obj.param.ReachSet;
             
             % Initializing the variables that will store the indices
-            safeIndex = false(Nx1*Nx2*Nx3 +1,1);
-            reachIndex = false(Nx1*Nx2*Nx3 + 1,1);
+            safeIndex = false(Nx1*Nx2*Nx3,1);
+            reachIndex = false(Nx1*Nx2*Nx3,1);
             
             % Iterating over states
             for i1 = 1:Nx1
                 for i2=1:Nx2
                     for i3=1:Nx3
                         x = [tempStatePartition.X1(i2,i1,i3);tempStatePartition.X2(i2,i1,i3);tempStatePartition.X3(i2,i1,i3)];  % current state
-                        index = (i1-1)*Nx2*Nx3 + (i2-1)*Nx3 + i3;
+                        index = RemainingIterations(3,[[i1;i2;i3],[Nx1;Nx2;Nx3]],1,[]);
                         
                         % if current state belongs to safe set, then set the
                         % corresponding index to true
@@ -85,13 +85,7 @@ classdef ComputeValueFunction
                         end
                     end
                 end
-            end
-            
-            % The last state correspond to the unsafe state of the MDP, so we set to
-            % false
-            safeIndex(end) = false;
-            reachIndex(end) = false;
-            
+            end            
             
             % saving the results
             obj.IndexSafeAndReachSet.safeIndex = safeIndex;
@@ -116,7 +110,7 @@ classdef ComputeValueFunction
             SafeSet = obj.param.SafeSet;
             
             % Initializing the variables that will store the indices
-            safeIndex = false(NumberOfPoints +1,1);
+            safeIndex = false(NumberOfPoints,1);
             
             % Iterating over states
             for i = 1:NumberOfPoints
@@ -167,7 +161,7 @@ classdef ComputeValueFunction
 %                     fprintf('Total of iterations: %d \n',total_iterations);
                     
                     % Creating a progress bar of the value function computation 
-                    total_iterations = TimeHorizon*(NumberOfPoints + 1)*NumberInputs;
+                    total_iterations = TimeHorizon*(NumberOfPoints)*NumberInputs;
                     
                     PrintInnerLoop(total_iterations,0,0,CurrentAmbiguity,OuterLoopInfo);
                     
@@ -211,8 +205,8 @@ classdef ComputeValueFunction
                             [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
                         end
                         
-                        obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
-                        obj.OptInput(1:end -1,i) = OptInputTemp;
+                        obj.ValueFunction(1:end,i) = ValueFunctionTemp;
+                        obj.OptInput(1:end,i) = OptInputTemp;
                     end
                 case 'TCL'
                     
@@ -229,7 +223,7 @@ classdef ComputeValueFunction
                     Grid_x = StatePartitionObj.getValues.Partition.grid_x;
                     
                     % Creating a progress bar of the value function computation 
-                    total_iterations = TimeHorizon*(NumberOfPoints + 1)*NumberInputs;
+                    total_iterations = TimeHorizon*(NumberOfPoints)*NumberInputs;
                     PrintInnerLoop(total_iterations,0,0,CurrentAmbiguity,OuterLoopInfo);
                     
                     for i = TimeHorizon:-1:1
@@ -274,8 +268,8 @@ classdef ComputeValueFunction
                             [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
                         end
                         
-                        obj.ValueFunction(1:end-1,i) = ValueFunctionTemp;
-                        obj.OptInput(1:end -1,i) = OptInputTemp;
+                        obj.ValueFunction(1:end,i) = ValueFunctionTemp;
+                        obj.OptInput(1:end,i) = OptInputTemp;
                     end
             end
         end
@@ -395,11 +389,9 @@ function [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(Prob,Partition,type,Ty
 switch TypeOfVectorField
     case 'TCL'
         SupportSet = Partition';
-        SupportSet = [SupportSet,28];
         
     case 'Fishery'
         SupportSet = Partition';
-        SupportSet = [SupportSet,[210;210;1300]];
     otherwise
         NotImplemented();
 end

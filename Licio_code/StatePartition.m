@@ -33,8 +33,8 @@ classdef StatePartition
                     Nx3 = size(obj.Partition.X3,3);
                     Nu = size(InputPartition,1);
                     
-                    out = cell(Nx1*Nx2*Nx3*Nu + 1,1);
-                    outX = cell(Nx1*Nx2*Nx3 + 1,1);
+                    out = cell(Nx1*Nx2*Nx3*Nu,1);
+                    outX = cell(Nx1*Nx2*Nx3,1);
                     
                     for i1 = 1:Nx1
                         for i2 = 1:Nx2
@@ -54,15 +54,15 @@ classdef StatePartition
                         end
                     end
                     
-                    out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
-                    outX{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
+                  %  out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
+                 %   outX{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
                 case 'TCL'
                     
                     N = size(obj.Partition.X,1);
                     Nu = 2;
                     
-                    out = cell(Nu*N+1,1);
-                    outX = cell(N + 1,1);
+                    out = cell(Nu*N,1);
+                    outX = cell(N,1);
                     
                     for i = 1:N
                         x = obj.Partition.X(i);
@@ -75,8 +75,8 @@ classdef StatePartition
                         outX{i} = createXandUString(x,[]);
                     end
                     
-                    out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
-                    outX{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
+                   % out{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
+                   % outX{end} = 'NaN'; % The last state called 'NaN' represents a fictious state of the discrete model containing unsafe states
                 otherwise
                     NotImplemented();
             end
@@ -113,22 +113,18 @@ classdef StatePartition
                         find(obj.Partition.X3(1,1,:) <= x(3),1,'last')]; % Check the element of the partition
                     
                     if length(index) ~= 3 % If there is one dimensional for which index is empty, set out to empty array
-                        index = [];
-                        out.index = [];
-                        out.x = [];
+                        index = [1;1;1];
                     end
                     
-                    if ~isempty(index) % Otherwise, the function outputs a structure with index and xHat field
-                        xHat = [obj.Partition.X1(1,index(1),1);obj.Partition.X2(index(2),1,1);obj.Partition.X3(1,1,index(3));x(4)];
-                        out.index = index;
-                        out.x = xHat;
-                    end
+                    xHat = [obj.Partition.X1(1,index(1),1);obj.Partition.X2(index(2),1,1);obj.Partition.X3(1,1,index(3));x(4)];
+                    out.index = index;
+                    out.x = xHat;
                 case 'TCL'
                     index = find(obj.Partition.X <= x,1,'last');
                     
                     if isempty(index)
-                        out.index = [];
-                        out.x = [];
+                        out.index = 1;
+                        out.x = obj.Partition.X(1);
                     else
                         xHat = obj.Partition.X(index);
                         out.index = index;
@@ -149,21 +145,10 @@ classdef StatePartition
             switch obj.TypeOfVectorField
                 case 'Fishery'
                     out = zeros(4,1);
-                    
-                    if isempty(x)
-                        out = [];
-                    else
-                        out(1:3) = x(1:3) + obj.getSizePartition/2;
-                        out(4) = x(4);
-                    end
-                case 'TCL'
-                                     
-                    if isempty(x)
-                        out = [];
-                    else
-                        out = x + obj.getSizePartition/2;
-                    end
-                    
+                    out(1:3) = x(1:3) + obj.getSizePartition/2;
+                    out(4) = x(4);
+                case 'TCL'  
+                    out = x + obj.getSizePartition/2;  
                 otherwise
                     NotImplemented();
             end

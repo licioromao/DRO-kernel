@@ -59,7 +59,7 @@ switch TypeOfVectorField % checking the type of ambiguity
                 end
             end
             
-            out{i}.ValueFunction = ValueFunc{i}.ValueFunction(1:end-1,1);
+            out{i}.ValueFunction = ValueFunc{i}.ValueFunction(:,1);
             out{i}.OptInput = ValueFunc{i}.OptInput;
             out{i}.AmbiguityType = ValueFunc{i}.AmbiguityType;
             out{i}.TypeOfVectorField = ValueFunc{i}.TypeOfVectorField;

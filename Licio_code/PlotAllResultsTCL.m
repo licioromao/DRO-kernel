@@ -1,6 +1,10 @@
-function [] = PlotAllResultsTCL(TCL_pathFiles,MC)
+function [] = PlotAllResultsTCL(TCL_pathFiles,indexPaths,MC)
 
-L = length(TCL_pathFiles);
+if isempty(indexPaths)
+    L = length(TCL_pathFiles);
+else
+    L = indexPaths;
+end
 
 for i=1:L
     tempPlots = MonteCarloSimulation(TCL_pathFiles{i}.FullPath,'TCL',MC); 
