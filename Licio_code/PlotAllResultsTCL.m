@@ -8,7 +8,7 @@ end
 
 for i=1:L
     tempPlots = MonteCarloSimulation(TCL_pathFiles{i}.FullPath,'TCL',MC); 
-    PlotResults(tempPlots);
+        PlotResults(tempPlots);
 end
 
 

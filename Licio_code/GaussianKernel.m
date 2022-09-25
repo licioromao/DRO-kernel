@@ -31,7 +31,7 @@ switch mode
             end
         end
         
-        out = chol(A + 0.1*eye(L));
+        out = chol(A + 0.8*eye(L));
     otherwise
         error('This mode has not been implemented');
 end

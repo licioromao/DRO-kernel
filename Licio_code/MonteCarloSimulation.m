@@ -47,16 +47,29 @@ switch TypeOfVectorField % checking the type of ambiguity
         NumberOfPoints = size(grid_x,1);     
         
         tic
-        parfor i = 1:L
+        for i = 1:L
             
             sum_Safety = zeros(NumberOfPoints,1);
             Inputs = ValueFunc{i}.OptInput;
+            
+            if strcmp(ValueFunc{i}.AmbiguityType,'KernelAmbiguity')
+                sum_Safety_2 = zeros(NumberOfPoints,1);
+                InputsConservative = ValueFunc{i}.OptInputConservative;
+            end
+            
             
             for k=1:NumberOfPoints
                 x0 = grid_x(k);
                 for j = 1:MC
                     sum_Safety(k) = sum_Safety(k) + SimulateTrajectory(x0,Partition,Inputs,TimeHorizon,'TCL',param);
+                    sum_Safety_2(k) = sum_Safety_2(k) + SimulateTrajectory(x0,Partition,InputsConservative,TimeHorizon,'TCL',param);
                 end
+            end
+            
+            if strcmp(ValueFunc{i}.AmbiguityType,'KernelAmbiguity')
+                out{i}.ValueFunctionConservative = ValueFunc{i}.ValueFunctionConservative(:,1);
+                out{i}.OptInputConservative = ValueFunc{i}.OptInputConservative;
+                out{i}.EmpiricalValueFuncConservative = sum_Safety_2/MC;
             end
             
             out{i}.ValueFunction = ValueFunc{i}.ValueFunction(:,1);
@@ -67,7 +80,7 @@ switch TypeOfVectorField % checking the type of ambiguity
             out{i}.EmpiricalValueFunc = sum_Safety/MC;
             
         end
-        toc
+            toc
         
     otherwise
         NotImplemented(); % error if vector field is not implemented

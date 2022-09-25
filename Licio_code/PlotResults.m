@@ -39,10 +39,30 @@ switch TypeOfVectorField
             plot(X,ValueFunction,'LineWidth',1.5);
             %plot(X,eval(Name{i}).ValueFunction(1:end-1,end-3),'LineWidth',1.5);
         end
-        legend(Name)
         
+        legend(Name)
         TitleString = sprintf('TCL with Partition = %d, m=%d, ep=%.4f, rhoMu = %.2f, rhoSigma = %.2f',NumberOfPoints,m,ep,rhoMu,rhoSigma);
         title(TitleString)
+        
+        
+        for i =1:L
+            if strcmp(OuputOfMonteCarloSimulationFunc{i}.AmbiguityType,'KernelAmbiguity')
+                figure;
+                
+                grid on;
+                box on;
+                
+                ValueFunction = OuputOfMonteCarloSimulationFunc{i}.ValueFunction;
+                ValueFunctionConservative = OuputOfMonteCarloSimulationFunc{i}.ValueFunctionConservative;
+                plot(X,ValueFunctionConservative,'LineWidth',1.5);
+                hold on
+                plot(X,ValueFunction,'LineWidth',1.5)
+                legend({'ValueFuncConservative','ValueFunction'})
+                title('Comparison Kernel ValueFunc')
+            end
+        end
+        
+        
         
         figure;
         hold on

@@ -10,8 +10,8 @@ N = int16(8);
 % Number of points between 18 and 24 degree 
 TCLpartition = 20;
 
-mTCL = 20;
-ep = [0.01,0.05,0.08,0.1,0.18,0.25,0.35];
+mTCL = 1000;
+ep = [0.005,0.01,0.08,0.1];
 rhoMu = [0.7];
 rhoSigma = [0.5];
 
@@ -49,7 +49,7 @@ for i1=1:N_TCL
                 
                 % Parameters of the kernel ambiguity set
                 StructKernelAmbiguity.ep = ep(i2);
-                StructKernelAmbiguity.gamma = 1;
+                StructKernelAmbiguity.gamma = 1000;
                 StructKernelAmbiguity.m = mTCL(i1);
                 
                 % Parameters of the moment ambiguity set            
