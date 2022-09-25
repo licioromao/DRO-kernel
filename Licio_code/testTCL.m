@@ -10,8 +10,8 @@ N = int16(8);
 % Number of points between 18 and 24 degree 
 TCLpartition = 20;
 
-mTCL = 1000;
-ep = [0.001,0.01,0.08,0.1];
+mTCL = 20;
+ep = [0.01,0.05,0.08,0.1,0.18,0.25,0.35];
 rhoMu = [0.7];
 rhoSigma = [0.5];
 
@@ -59,7 +59,7 @@ for i1=1:N_TCL
                 % Parameters of the KL ambiguity set
                 StructKLdivAmbiguity.ep = ep(i2);               
                 
-                TCL_ResultsPath{index} = TCL(N,TCLpartition,mTCL(i1),{StructNoAmbiguity,StructKernelAmbiguity,StructMomentAmbiguity,StructKLdivAmbiguity},OuterLoopInfo);
+                TCL_ResultsPath{index} = TCL(N,TCLpartition,mTCL(i1),{StructKernelAmbiguity},OuterLoopInfo);
                 
                 timeIteration = toc(timeIterarionKey); % Estimating how long time it took the last iteration
                 
@@ -70,7 +70,7 @@ for i1=1:N_TCL
     end
 end
 
-PathsString = sprintf('./Results/results_%s/TCL/paths.mat',char(java.net.InetAddress.getLocalHost.getHostName));
+PathsString = sprintf('./Results/results_%s/TCL/paths_%s.mat',char(java.net.InetAddress.getLocalHost.getHostName),TCL_ResultsPath{end}.FileName);
 
 save(PathsString);
 

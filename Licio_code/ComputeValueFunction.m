@@ -4,8 +4,10 @@ classdef ComputeValueFunction
     
     properties
         ValueFunction % This value stores the optimal value function
+        ValueFunctionConservative % This value stores the optimal value function
         TypeOfVectorField % This value stores the type of Vector field
         OptInput % This value stores the optimal action
+        OptInputConservative % This value stores the optimal action
         AmbiguityType % Type of ambiguity set
         ParamAmbiguity % Stores the parameters of the Ambiguity type
         param % structure with all the parameters of the problem
@@ -29,7 +31,9 @@ classdef ComputeValueFunction
             
             
             obj.ValueFunction = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the value function
+            obj.ValueFunctionConservative = zeros(NumberOfPoints,ArgParam.N+1);  % This value stores the optimal value function for the matrix factorization case if ambiguity set is equal to kernel
             obj.OptInput = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input
+            obj.OptInputConservative = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input for kernel ambiguity, which has two value functions
             obj.TypeOfVectorField = TypeOfVectorField;
             obj.AmbiguityType = StructAmbiguityTypes.Name;
             obj.ParamAmbiguity = StructAmbiguityTypes;
@@ -220,6 +224,11 @@ classdef ComputeValueFunction
                     end                    
                     
                     obj.ValueFunction(obj.IndexSafeSet,obj.N+1) = 1; % initializing the value function on the reach set
+                    
+                    if strcmp(obj.AmbiguityType,'KernelAmbiguity')
+                        obj.ValueFunctionConservative(obj.IndexSafeSet,obj.N+1) = 1; % initializing the value function on the reach set
+                    end
+                    
                     Grid_x = StatePartitionObj.getValues.Partition.grid_x;
                     
                     % Creating a progress bar of the value function computation 
@@ -231,22 +240,65 @@ classdef ComputeValueFunction
                         ValueFunctionTemp = zeros(NumberOfPoints,1);
                         OptInputTemp = zeros(NumberOfPoints,1);
                         
+                        % Since we now have two value function for
+                        % the Kernel ambiguity we need to modify
+                        % this
+                        if strcmp(obj.AmbiguityType,'KernelAmbiguity')
+                            NextValueFuncConservative = obj.ValueFunctionConservative(:,i+1); % saving in a temporary variable the value function of the next step
+                            ValueFunctionTempConservative = zeros(NumberOfPoints,1);
+                            OptInputTempConservative = zeros(NumberOfPoints,1);
+                        end
+                        
+                        
                         sumTime = 0;
                         sumIt = 0;
                         
                         for j = 1:NumberOfPoints % iterates over the number of points
                             x = Grid_x(j); % getting the current state to be updated
-                            tempValueFunc = zeros(NumberInputs,1);
-                            tic;
+                            
+                            
                             tempIterateFunc = @obj.iterateValueFunction;
-                            parfor uCounter = 1:NumberInputs
-                                u = InputPartition(uCounter); % iterating over the number of inputs
-                                tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj);	 % getting the new value for the value function
+                            tempAmbiguityType = obj.AmbiguityType; % This is necessary due to the parfor loop below
+                            
+                            % Since we now have two value function for
+                            % the Kernel ambiguity we need to modify
+                            % this
+                            if strcmp(tempAmbiguityType,'KernelAmbiguity')
+                                tempValueFuncMatrix = zeros(NumberInputs,1);
+                                tempValueFuncConservative = zeros(NumberInputs,1);
+                            else
+                                tempValueFunc = zeros(NumberInputs,1);
                             end
+                            
+                            tic;
+                            for uCounter = 1:NumberInputs
+                                u = InputPartition(uCounter); % iterating over the number of inputs
+                                
+                                % Since we now have two value function for
+                                % the Kernel ambiguity we need to modify
+                                % this
+                                if strcmp(tempAmbiguityType,'KernelAmbiguity')
+                                    
+                                    tempValueFuncConservative(uCounter)  = tempIterateFunc(x,u,NextValueFuncConservative,StatePartitionObj,'Conservative');	 % getting the new value for the value function
+                                    tempValueFuncMatrix(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj,'Matrix');	 % getting the new value for the value function
+                                    
+                                else
+                                    tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj);	 % getting the new value for the value function
+                                end
+                            end
+                                                        
+                            if strcmp(tempAmbiguityType,'KernelAmbiguity')
+                                [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFuncMatrix); % storing the optimal value function and policy
+                                [ValueFunctionTempConservative(j),OptInputTempConservative(j)] = max(tempValueFuncConservative); % storing the optimal value function and policy
+                            else
+                                [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
+                            end
+                            
                             Lastime = toc;
                             sumTime = sumTime + Lastime;
                             sumIt = sumIt + 1;
-                            % Update waitbar
+                            
+                             % Printing on the screen
                             tempInt = double(TimeHorizon-i+1);
                             iterates = RemainingIterations(2,[[tempInt;j],[TimeHorizon;NumberOfPoints]],NumberInputs,[]); % This is the number of iterations completes so far. The name of the matlab function may be misleading
                             
@@ -263,18 +315,22 @@ classdef ComputeValueFunction
                                     sumIt = 0;
                                 end
                             end
-                            %waitbar(perc_iterates,hh,sprintf('%.5f completed. %.2f seconds to go',perc_iterates,SecToGo));
                             
-                            [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
                         end
                         
-                        obj.ValueFunction(1:end,i) = ValueFunctionTemp;
-                        obj.OptInput(1:end,i) = OptInputTemp;
+                        obj.ValueFunction(:,i) = ValueFunctionTemp;
+                        obj.OptInput(:,i) = OptInputTemp;
+                        
+                        if strcmp(tempAmbiguityType,'KernelAmbiguity')
+                            obj.ValueFunctionConservative(:,i) = ValueFunctionTempConservative;
+                            obj.OptInputConservative(:,i) = OptInputTempConservative;
+                        end
+                        
                     end
             end
         end
         
-        function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc,StatePartitionObj)
+        function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel)
             
             StringCurrentState = createXandUString(CurrentState,[]);
             
@@ -298,7 +354,7 @@ classdef ComputeValueFunction
                     if ~indexSafety(indexCurrentState)
                         out = 0;
                     else
-                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj);
+                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
                     end
                     
                 otherwise
@@ -308,7 +364,7 @@ classdef ComputeValueFunction
             
         end
         
-        function out = InnerOptimization(obj,x,u,NextValueFunc,StatePartitionObj)
+        function out = InnerOptimization(obj,x,u,NextValueFunc,StatePartitionObj,TypeOfKernel)
             
             % Returns the value function for a given state-action pair (x,u) using the
             % value function at the next iteration (NextValueFunc).
@@ -343,7 +399,7 @@ classdef ComputeValueFunction
                     [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransXU{1},TempPartition.grid_x,'WithSigma',obj.TypeOfVectorField);
                     
                     OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoSigma,rhoMu,SupportSet);
-                    out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
+                    out = AnalyseResults(OptPro,obj.AmbiguityType,[],TypeOfKernel);
                 case 'WassersteinAmbiguity'
                     CenterBall = TransXU{1};
                     
@@ -352,20 +408,20 @@ classdef ComputeValueFunction
                     
                     OptPro = WassersteinAmbiguity(ObjFunc,ep,CenterBall);
                     
-                    out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
+                    out = AnalyseResults(OptPro,obj.AmbiguityType,[],TypeOfKernel);
                 case 'KernelAmbiguity'
                     CenterBall = TransXU{1};
+                    gridX = StatePartitionObj.getValues.Partition.grid_x;
                     
-                    OptPro = KernelBasedAmbiguity(ObjFunc,obj.ParamAmbiguity.ep,CenterBall,@GaussianKernel);
+                    OptPro = KernelBasedAmbiguity(ObjFunc,obj.ParamAmbiguity.ep,CenterBall,@GaussianKernel,obj.ParamAmbiguity.gamma,gridX);
                     
                     % Ambiguity parameterrs
-                    OptPro.gamma = obj.ParamAmbiguity.gamma;
                     OptPro.m = obj.ParamAmbiguity.m;
                     
                     OptPro.CurrentState = x;
                     OptPro.Input = u;  OptPro.param = obj.param;
                     
-                    out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj);
+                    out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj,TypeOfKernel);
                 case 'KLdivAmbiguity'
                     
                     %Ambiguity parameters
@@ -373,7 +429,7 @@ classdef ComputeValueFunction
                     
                     CenterBall = TransXU{1};
                     OptPro = KLdivAmbiguity(ObjFunc,ep,CenterBall);
-                    out = AnalyseResults(OptPro,obj.AmbiguityType,[]);
+                    out = AnalyseResults(OptPro,obj.AmbiguityType,[],TypeOfKernel);
                 otherwise
                     error('This type of ambiguity has not been implemented. Please change the field AmbiguityType to a valid type.');
             end
@@ -437,11 +493,20 @@ end
         
 end
 
-function value = AnalyseResults(ObjAmbiguity,type,StatePartitionObj)
+function value = AnalyseResults(ObjAmbiguity,type,StatePartitionObj,TypeOfKernel)
 
 if strcmp(type,'KernelAmbiguity')
-    ObjAmbiguity = ObjAmbiguity.SolveOptimization(StatePartitionObj);
-    value = ObjAmbiguity.OptRes.opt_value;
+    
+    switch TypeOfKernel
+        case 'Conservative'
+            ObjAmbiguity = ObjAmbiguity.SolveOptimizationConservative(StatePartitionObj);
+            value = ObjAmbiguity.OptRes.opt_value;
+        case 'Matrix'
+            ObjAmbiguity = ObjAmbiguity.SolveOptimization(StatePartitionObj);
+            value = ObjAmbiguity.OptRes.opt_value;
+        otherwise
+            error('This type of Kernel has not been implemented.')
+    end    
 else
     ObjAmbiguity = ObjAmbiguity.SolveOptimization;
     if (ObjAmbiguity.OptRes.SolverStatus.problem == 0) || (ObjAmbiguity.OptRes.SolverStatus.problem == 4) || (ObjAmbiguity.OptRes.SolverStatus.problem == -1)

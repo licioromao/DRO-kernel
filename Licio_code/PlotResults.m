@@ -2,9 +2,22 @@ function [] = PlotResults(OuputOfMonteCarloSimulationFunc)
 
 NumberOfPoints = OuputOfMonteCarloSimulationFunc{end}.PartitionSize;
 m = OuputOfMonteCarloSimulationFunc{end}.m;
-ep = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.ep;
-rhoMu = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.rhoMu;
-rhoSigma = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.rhoSigma;
+ep = 0;
+rhoMu =0;
+rhoSigma = 0;
+
+if isfield(OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam,'ep')
+    ep = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.ep;
+end
+
+if isfield(OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam,'rhoMu')
+    rhoMu = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.rhoMu;
+end
+
+
+if isfield(OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam,'rhoSigma')
+    rhoSigma = OuputOfMonteCarloSimulationFunc{end}.AmbiguityParam.rhoSigma;
+end
 
 TypeOfVectorField = OuputOfMonteCarloSimulationFunc{1}.TypeOfVectorField;
 Grid = OuputOfMonteCarloSimulationFunc{end}.Partition;
