@@ -5,13 +5,13 @@ StructMomentAmbiguity.Name = [];
 StructKLdivAmbiguity.Name = [];
 
 % Time horizon
-N = int16(8);
+N = int16(4);
 
 % Number of points between 18 and 24 degree 
 TCLpartition = 20;
 
-mTCL = 1000;
-ep = [0.005,0.01,0.08,0.1];
+mTCL = 100;
+ep = [0.005 ];
 rhoMu = [0.7];
 rhoSigma = [0.5];
 
@@ -59,7 +59,7 @@ for i1=1:N_TCL
                 % Parameters of the KL ambiguity set
                 StructKLdivAmbiguity.ep = ep(i2);               
                 
-                TCL_ResultsPath{index} = TCL(N,TCLpartition,mTCL(i1),{StructKernelAmbiguity},OuterLoopInfo);
+                TCL_ResultsPath{index} = TCL(N,TCLpartition,mTCL(i1),{StructNoAmbiguity,StructKernelAmbiguity,StructMomentAmbiguity,StructKLdivAmbiguity},OuterLoopInfo);
                 
                 timeIteration = toc(timeIterarionKey); % Estimating how long time it took the last iteration
                 

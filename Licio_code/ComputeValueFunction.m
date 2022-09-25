@@ -283,7 +283,7 @@ classdef ComputeValueFunction
                                     tempValueFuncMatrix(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj,'Matrix');	 % getting the new value for the value function
                                     
                                 else
-                                    tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj);	 % getting the new value for the value function
+                                    tempValueFunc(uCounter) = tempIterateFunc(x,u,NextValueFunc,StatePartitionObj,[]);	 % getting the new value for the value function
                                 end
                             end
                                                         
