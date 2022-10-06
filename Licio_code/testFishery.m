@@ -1,3 +1,5 @@
+AddFunctionPaths();
+
 % Empty to enable printing information of the script
 StructNoAmbiguity.Name = [];
 StructKernelAmbiguity.Name = [];
@@ -8,7 +10,7 @@ StructKLdivAmbiguity.Name = [];
 N = int16(10);
 
 % Partition of the state space
-FisheryPartition = [6,6,6];
+FisheryPartition = [2,2,2];
 
 mFishery = [110];
 ep = [0.1];
@@ -28,11 +30,6 @@ StructNoAmbiguity.Name = 'NoAmbiguity';
 StructKernelAmbiguity.Name = 'KernelAmbiguity';
 StructMomentAmbiguity.Name = 'MomentAmbiguity';
 StructKLdivAmbiguity.Name = 'KLdivAmbiguity';
-
-% % Creating a progress bar of the value function computation
-% hh = waitbar(0,'Outer loop iterations','Name','Outer loop');
-% total_iterations = N_Fishery*N_ep*N_Mu*N_Sigma;
-% fprintf('(Outer loop) Total of iterations: %d \n',total_iterations);
 
 timeIteration = 40; % A guess on the first iteration
 OuterLoopInfo.TypeVectorField = 'Fishery';
@@ -65,17 +62,18 @@ for i1=1:N_Fishery
                 StructKLdivAmbiguity.ep = ep(i2);
                
                 
-                %Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructKLdivAmbiguity,StructNoAmbiguity,StructMomentAmbiguity,StructKernelAmbiguity});
+                Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructKLdivAmbiguity,StructNoAmbiguity,StructMomentAmbiguity,StructKernelAmbiguity},OuterLoopInfo);
                 %Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructNoAmbiguity,StructKernelAmbiguity});
-                Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructMomentAmbiguity,StructNoAmbiguity},OuterLoopInfo);
-
-%                 IterationsToGo = (total_iterations - index);
-%                 perc_iterates = index/total_iterations;
-%                 waitbar(perc_iterates,hh,sprintf('%.5f completed. %d iterations to go',perc_iterates,IterationsToGo));
-%                 
+%                Fishery_ResultsPath{index} = Fishery_management(N,FisheryPartition,mFishery(i1),{StructNoAmbiguity},OuterLoopInfo);
+                 
                 
             end
         end
     end
 end
 
+PathsString = sprintf('./Results/results_%s/Fishery/paths_%s.mat',char(java.net.InetAddress.getLocalHost.getHostName),TCL_ResultsPath{end}.FileName);
+
+save(PathsString);
+
+RemoveFunctionPaths();

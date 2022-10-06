@@ -94,8 +94,6 @@ classdef VectorFieldTCL
         end
     end
     
-    methods (Access =  private)
-    end
 end
 
 function VerifyArguments(x,u,param)

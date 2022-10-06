@@ -1,4 +1,4 @@
-function out = TCL(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,StructAmbiguityTypes,OuterLoopInfo,FILE)
+function out = CarPoleNL(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,StructAmbiguityTypes,OuterLoopInfo,FILE)
 
 TransitionProb = [];
 
@@ -12,48 +12,36 @@ end
 
 %% Model parameters 
 
-R = 2; % Thermal resistence in Celsius/kW
-C = 2; % Thermal capacity ini kW/Celsius
-P = 14; % Range of energy transfer to or from the thermal mass in kW
-eta = 0.7; % Control efficiency
-h = 5/60; % Discretization time in hours
+param.T = 0.015; % Discretization 
+param.m = 0.1; % mass of the pole
+param.g = 9.8; % value of grabity
+param.l = 0.5; % length of the pole
+param.mt = 1.1; % total mass of the system
 
-alpha = exp(-h/(C*R));
 
-Al = 19; % Lower bound on the safe set
-Ah = 22; % Upper bound on the safe set
+Al = [-0.7;-1;-pi/6;-10*pi]; % Lower bound on the safe set
+Ah = -Al; % Upper bound on the safe set
 
-mu = 0; sigma = 100*0.25^2; % Estimate on the mean and variance
-W = [-0.5*sqrt(sigma/12),0.5*sqrt(sigma/12)];  % Support of the distribution
+mu = 0; sigma = 0.01^2; % Estimate on the mean and variance
 
-theta = 32; % Environment temperature
-p = 0.05; % success probability
-
-param.alpha = alpha;
-param.theta = theta;
-param.eta = eta;
-param.R = R;
-param.P = P;
-param.C = C;
-param.h = h;
-param.p = p;
 param.SafeSet = [Al,Ah];
+param.ReachSet = [[-30;-30;-0.05;-30],[30;30;0.05;30]];
+
 param.N = int8(TimeHorizon);
 param.OuterLoopInfo = OuterLoopInfo;
 param.OuterLoopInfo.StringAmbiguity = StructAmbiguityTypes; % THIS IS BAD PRACTICE SINCE I AM ALSO SHARING AMBIGUITY PARAMETERS
 
 pd = makedist('Normal','mu',mu,'sigma',sigma);
-pd_truncated = truncate(pd,W(1),W(2));
 
-param.w = pd_truncated;
+param.w = pd;
 
 param.MC = NumberOfMonteCarlo;
 
 param.NumberOfPartitions = NumberOfPartitions;
-InputPartition = generateInputPartition([],'TCL'); % Generate a vector with all possible combinations of inputs
+InputPartition = generateInputPartition([],'CarPoleNL'); % Generate a vector with all possible combinations of inputs
 
 
-Grid = StatePartition(NumberOfPartitions,param.SafeSet,'TCL'); % Generate the partition of the state space
+Grid = StatePartition(NumberOfPartitions,param.SafeSet,'CarPoleNL'); % Generate the partition of the state space
 [List,ListX] = Grid.createList(InputPartition); % List containing labels for the discrete states of the discretazation
 
 param.List = List;
@@ -84,11 +72,11 @@ for i = 1:L
     switch StructAmbiguityTypes{i}.Name
         case 'NoAmbiguity'
             TotalTime = tic;
-            ValueFuncNoAmbiguity = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncNoAmbiguity','var'),param);
+            ValueFuncNoAmbiguity = MainValueFunctionIteration(Grid,InputPartition,'CarPoleNL',StructAmbiguityTypes{i},exist('ValueFuncNoAmbiguity','var'),param);
             ValueFuncNoAmbiguity.time = toc(TotalTime);
         case 'MomentAmbiguity'
             TotalTime1 = tic;
-            ValueFuncMoment = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncMoment','var'),param);
+            ValueFuncMoment = MainValueFunctionIteration(Grid,InputPartition,'CarPoleNL',StructAmbiguityTypes{i},exist('ValueFuncMoment','var'),param);
             ValueFuncMoment.time = toc(TotalTime1);
             
             paramSave.rhoMu = StructAmbiguityTypes{i}.rhoMu;
@@ -96,7 +84,7 @@ for i = 1:L
              
         case 'WassersteinAmbiguity'
             TotalTime2 = tic;
-            ValueFuncWasserstein = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncWasserstein','var'),param);
+            ValueFuncWasserstein = MainValueFunctionIteration(Grid,InputPartition,'CarPoleNL',StructAmbiguityTypes{i},exist('ValueFuncWasserstein','var'),param);
             ValueFuncWasserstein.time = toc(TotalTime2);
             
             paramSave.ep = StructAmbiguityTypes{i}.ep;
@@ -104,14 +92,14 @@ for i = 1:L
             
         case 'KLdivAmbiguity'
             TotalTime3 = tic;
-            ValueFuncKL = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncKL','var'),param);
+            ValueFuncKL = MainValueFunctionIteration(Grid,InputPartition,'CarPoleNL',StructAmbiguityTypes{i},exist('ValueFuncKL','var'),param);
             ValueFuncKL.time = toc(TotalTime3);
             
             paramSave.ep = StructAmbiguityTypes{i}.ep;
             
         case 'KernelAmbiguity'  
             TotalTime4 = tic;
-            ValueFuncKernel = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncKernel','var'),param);
+            ValueFuncKernel = MainValueFunctionIteration(Grid,InputPartition,'CarPoleNL',StructAmbiguityTypes{i},exist('ValueFuncKernel','var'),param);
             ValueFuncKernel.time = toc(TotalTime4);
             
             paramSave.ep = StructAmbiguityTypes{i}.ep;
@@ -124,7 +112,7 @@ end
 if nargin > 5
     save(FILE);
 else
-    FileName = getDateSaveFile(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,'TCL',paramSave); % Getting the name of file based on the current date and time
+    FileName = getDateSaveFile(TimeHorizon,NumberOfPartitions,NumberOfMonteCarlo,'CarPoleNL',paramSave); % Getting the name of file based on the current date and time
     save(FileName.FullPath); % saving the results in the path specified by FILE
 end
 
@@ -132,4 +120,3 @@ out = FileName;
 
 
 end
-
