@@ -18,13 +18,6 @@ DestinationFolder = sprintf('./Results/results_%s',char(java.net.InetAddress.get
 [status{1},msg{1}] = mkdir(DestinationFolder);
 
 switch TypeOfVectorField
-    case 'Fishery'
-        DestinationFolder1 = strcat(sprintf('%s/',DestinationFolder),TypeOfVectorField);
-        [status{2},msg{2}] = mkdir(DestinationFolder1);
-        
-        DestinationFolder2 = strcat('/N_',sprintf('%d',TimeHorizon),'_Partition_',sprintf('%d_%d_%d_',NumberOfPartitions),'m_',sprintf('%d',NumberOfMonteCarlo));
-        DirectoryPath = strcat(DestinationFolder1,DestinationFolder2);
-        [status{3},msg{3}] = mkdir(DirectoryPath);
     case 'TCL'
         DestinationFolder1 = strcat(sprintf('%s/',DestinationFolder),TypeOfVectorField);
         [status{2},msg{2}] = mkdir(DestinationFolder1);
@@ -32,6 +25,38 @@ switch TypeOfVectorField
         DestinationFolder2 = strcat('/N_',sprintf('%d',TimeHorizon),'_Partition_',sprintf('%d_',NumberOfPartitions),'m_',sprintf('%d',NumberOfMonteCarlo));
         DirectoryPath = strcat(DestinationFolder1,DestinationFolder2);
         [status{3},msg{3}] = mkdir(DirectoryPath);
+     case 'ChainInt'
+        DestinationFolder1 = strcat(sprintf('%s/',DestinationFolder),TypeOfVectorField);
+        [status{2},msg{2}] = mkdir(DestinationFolder1);
+        
+        DestinationFolder2 = strcat('/N_',sprintf('%d',TimeHorizon),'_Partition_',sprintf('%d_%d_',NumberOfPartitions),'m_',sprintf('%d',NumberOfMonteCarlo));
+        DirectoryPath = strcat(DestinationFolder1,DestinationFolder2);
+        [status{3},msg{3}] = mkdir(DirectoryPath);
+        
+    case 'Fishery'
+        DestinationFolder1 = strcat(sprintf('%s/',DestinationFolder),TypeOfVectorField);
+        [status{2},msg{2}] = mkdir(DestinationFolder1);
+        
+        DestinationFolder2 = strcat('/N_',sprintf('%d',TimeHorizon),'_Partition_',sprintf('%d_%d_%d_',NumberOfPartitions),'m_',sprintf('%d',NumberOfMonteCarlo));
+        DirectoryPath = strcat(DestinationFolder1,DestinationFolder2);
+        [status{3},msg{3}] = mkdir(DirectoryPath);
+        
+    case 'CarPole'
+        DestinationFolder1 = strcat(sprintf('%s/',DestinationFolder),TypeOfVectorField);
+        [status{2},msg{2}] = mkdir(DestinationFolder1);
+        
+        DestinationFolder2 = strcat('/N_',sprintf('%d',TimeHorizon),'_Partition_',sprintf('%d_%d_%d_%d_',NumberOfPartitions),'m_',sprintf('%d',NumberOfMonteCarlo));
+        DirectoryPath = strcat(DestinationFolder1,DestinationFolder2);
+        [status{3},msg{3}] = mkdir(DirectoryPath);
+        
+    case 'CarPoleNL'
+        DestinationFolder1 = strcat(sprintf('%s/',DestinationFolder),TypeOfVectorField);
+        [status{2},msg{2}] = mkdir(DestinationFolder1);
+        
+        DestinationFolder2 = strcat('/N_',sprintf('%d',TimeHorizon),'_Partition_',sprintf('%d_%d_%d_%d_',NumberOfPartitions),'m_',sprintf('%d',NumberOfMonteCarlo));
+        DirectoryPath = strcat(DestinationFolder1,DestinationFolder2);
+        [status{3},msg{3}] = mkdir(DirectoryPath);
+        
     otherwise
         NotImplemented();
 end

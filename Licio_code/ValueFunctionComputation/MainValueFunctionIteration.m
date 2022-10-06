@@ -25,6 +25,12 @@ if ~BooleanSignal
             ValueFunc = ValueFunc.getIndexReachAvoid(PartitionObj.getValues);
         case 'TCL'
             ValueFunc = ValueFunc.getIndexSafety(PartitionObj.getValues);
+        case 'ChainInt'
+            ValueFunc = ValueFunc.getIndexSafety(PartitionObj.getValues);
+        case 'CarPole'
+            ValueFunc = ValueFunc.getIndexReachAvoid(PartitionObj.getValues);
+        case 'CarPoleNL'
+            ValueFunc = ValueFunc.getIndexReachAvoid(PartitionObj.getValues);
         otherwise
             NotImplemented();
     end

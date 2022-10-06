@@ -96,6 +96,8 @@ for i = 1:L
             TotalTime = tic;
             ValueFuncNoAmbiguity = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncNoAmbiguity','var'),param);
             ValueFuncNoAmbiguity.time = toc(TotalTime);
+            
+            paramSave.ep = 0.00;
         case 'MomentAmbiguity'
             TotalTime1 = tic;
             ValueFuncMoment = MainValueFunctionIteration(Grid,InputPartition,'Fishery',StructAmbiguityTypes{i},exist('ValueFuncMoment','var'),param);

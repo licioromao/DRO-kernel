@@ -1,3 +1,6 @@
+AddFunctionPaths();
+
+
 % Empty to enable printing information of the script
 StructNoAmbiguity.Name = [];
 StructKernelAmbiguity.Name = [];
@@ -8,7 +11,7 @@ StructKLdivAmbiguity.Name = [];
 N = int16(4);
 
 % Number of points between 18 and 24 degree 
-TCLpartition = 20;
+TCLpartition = 5;
 
 mTCL = 100;
 ep = [0.005 ];
@@ -73,6 +76,8 @@ end
 PathsString = sprintf('./Results/results_%s/TCL/paths_%s.mat',char(java.net.InetAddress.getLocalHost.getHostName),TCL_ResultsPath{end}.FileName);
 
 save(PathsString);
+
+RemoveFunctionPaths();
 
 
 

@@ -17,6 +17,12 @@ switch TypeOfVectorField
         
     case 'TCL'
         out = [0;1];
+    case 'ChainInt'
+        out = linspace(0,1,10)';
+    case 'CarPole'
+        out = linspace(-10,10,5)';
+    case 'CarPoleNL'
+        out = linspace(-10,10,5)';
     otherwise
         NoImplement();
 
