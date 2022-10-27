@@ -3,17 +3,27 @@ classdef ComputeValueFunction
     %   Detailed explanation goes here
     
     properties
+        
         ValueFunction % This value stores the optimal value function
         ValueFunctionConservative % This value stores the optimal value function
+        ValueFunctionQP % This value stores the optimal value function
+
         TypeOfVectorField % This value stores the type of Vector field
+        
         OptInput % This value stores the optimal action
         OptInputConservative % This value stores the optimal action
+        OptInputQP % This value stores the optimal action
+
         AmbiguityType % Type of ambiguity set
         ParamAmbiguity % Stores the parameters of the Ambiguity type
+        
         param % structure with all the parameters of the problem
+        
         IndexSafeAndReachSet % Indices of the safe and reach set
         IndexSafeSet
+        
         N % horizon of the reach-avoid property
+        
         time % this will store the time to go through a full value function computation
     end
     
@@ -38,14 +48,22 @@ classdef ComputeValueFunction
             
             obj.ValueFunction = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the value function
             obj.ValueFunctionConservative = zeros(NumberOfPoints,ArgParam.N+1);  % This value stores the optimal value function for the matrix factorization case if ambiguity set is equal to kernel
+            obj.ValueFunctionQP = zeros(NumberOfPoints,ArgParam.N+1);  % This value stores the optimal value function for the QP case if ambiguity set is equal to kernel
+
             obj.OptInput = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input
-            obj.OptInputConservative = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input for kernel ambiguity, which has two value functions
+            obj.OptInputConservative = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input for kernel ambiguity, which has three value functions
+            obj.OptInputQP = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input for kernel ambiguity, which has three value functions
+            
             obj.TypeOfVectorField = TypeOfVectorField;
             obj.AmbiguityType = StructAmbiguityTypes.Name;
             obj.ParamAmbiguity = StructAmbiguityTypes;
+            
             obj.param = ArgParam;
+            
             obj.IndexSafeAndReachSet = [];
+            
             obj.N = ArgParam.N;
+            
             obj.time = [];
         end
         
@@ -167,6 +185,9 @@ classdef ComputeValueFunction
             if isfield(temp,'ValueFunctionConservative')
                 obj.ValueFunctionConservative = temp.ValueFunctionConservative;
                 obj.OptInputConservative = temp.OptInputConservative;
+
+                obj.ValueFunctionQP = temp.ValueFunctionQP;
+                obj.OptInputQP = temp.OptInputQP;
             end
             
         end
@@ -529,6 +550,9 @@ if strcmp(type,'KernelAmbiguity')
         case 'Matrix'
             ObjAmbiguity = ObjAmbiguity.SolveOptimization(StatePartitionObj);
             value = ObjAmbiguity.OptRes.opt_value;
+        case 'QP'
+            ObjAmbiguity = ObjAmbiguity.SolveOptimizationQP(StatePartitionObj);
+            value = ObjAmbiguity.OptRes.opt_value;
         otherwise
             error('This type of Kernel has not been implemented.')
     end    
@@ -565,11 +589,17 @@ switch TypeOfVectorField
         
         
         ValueFunction = zeros(NumberOfPoints,TimeHorizon + 1);
+        OptInput = zeros(NumberOfPoints,TimeHorizon + 1);
         ValueFunction(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         
         if strcmp(AmbiguityType,'KernelAmbiguity')
             ValueFunctionConservative = zeros(NumberOfPoints,TimeHorizon + 1);
+            OptInputConservative = zeros(NumberOfPoints,TimeHorizon + 1);
             ValueFunctionConservative(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
+
+            ValueFunctionQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            OptInputQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            ValueFunctionQP(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         end
         
     case 'ChainInt'
@@ -583,11 +613,17 @@ switch TypeOfVectorField
         end
         
         ValueFunction = zeros(NumberOfPoints,TimeHorizon + 1);
+        OptInput = zeros(NumberOfPoints,TimeHorizon + 1);
         ValueFunction(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         
         if strcmp(AmbiguityType,'KernelAmbiguity')
             ValueFunctionConservative = zeros(NumberOfPoints,TimeHorizon + 1);
+            OptInputConservative = zeros(NumberOfPoints,TimeHorizon + 1);
             ValueFunctionConservative(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
+
+            ValueFunctionQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            OptInputQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            ValueFunctionQP(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         end
     
     case 'Fishery'
@@ -599,11 +635,17 @@ switch TypeOfVectorField
         
         
         ValueFunction = zeros(NumberOfPoints,TimeHorizon + 1);
-        ValueFunction(IndexSafeAndOrReachSet.IndexSafeAndReachSet.reachIndex,TimeHorizon+1) = 1; % initializing the value function on the reach set
+        OptInput = zeros(NumberOfPoints,TimeHorizon + 1);
+        ValueFunction(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         
         if strcmp(AmbiguityType,'KernelAmbiguity')
             ValueFunctionConservative = zeros(NumberOfPoints,TimeHorizon + 1);
-            ValueFunctionConservative(IndexSafeAndOrReachSet.IndexSafeAndReachSet.reachIndex,TimeHorizon+1) = 1; % initializing the value function on the reach set
+            OptInputConservative = zeros(NumberOfPoints,TimeHorizon + 1);
+            ValueFunctionConservative(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
+
+            ValueFunctionQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            OptInputQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            ValueFunctionQP(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         end
         
     case 'CarPole'
@@ -616,13 +658,19 @@ switch TypeOfVectorField
         
         
         ValueFunction = zeros(NumberOfPoints,TimeHorizon + 1);
-        ValueFunction(IndexSafeAndOrReachSet.IndexSafeAndReachSet.reachIndex,TimeHorizon+1) = 1; % initializing the value function on the reach set
-        
+        OptInput = zeros(NumberOfPoints,TimeHorizon + 1);
+        ValueFunction(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
+
         if strcmp(AmbiguityType,'KernelAmbiguity')
             ValueFunctionConservative = zeros(NumberOfPoints,TimeHorizon + 1);
-            ValueFunctionConservative(IndexSafeAndOrReachSet.IndexSafeAndReachSet.reachIndex,TimeHorizon+1) = 1; % initializing the value function on the reach set
+            OptInputConservative = zeros(NumberOfPoints,TimeHorizon + 1);
+            ValueFunctionConservative(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
+
+            ValueFunctionQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            OptInputQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            ValueFunctionQP(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         end
-        
+
     case 'CarPoleNL'
         
         NumberOfPoints = param.NumberOfPartitions(1)*param.NumberOfPartitions(2)*param.NumberOfPartitions(3)*param.NumberOfPartitions(4); % number of points of the value function
@@ -633,11 +681,17 @@ switch TypeOfVectorField
         
         
         ValueFunction = zeros(NumberOfPoints,TimeHorizon + 1);
-        ValueFunction(IndexSafeAndOrReachSet.IndexSafeAndReachSet.reachIndex,TimeHorizon+1) = 1; % initializing the value function on the reach set
+        OptInput = zeros(NumberOfPoints,TimeHorizon + 1);
+        ValueFunction(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         
         if strcmp(AmbiguityType,'KernelAmbiguity')
             ValueFunctionConservative = zeros(NumberOfPoints,TimeHorizon + 1);
-            ValueFunctionConservative(IndexSafeAndOrReachSet.IndexSafeAndReachSet.reachIndex,TimeHorizon+1) = 1; % initializing the value function on the reach set
+            OptInputConservative = zeros(NumberOfPoints,TimeHorizon + 1);
+            ValueFunctionConservative(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
+
+            ValueFunctionQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            OptInputQP = zeros(NumberOfPoints,TimeHorizon + 1);
+            ValueFunctionQP(IndexSafeAndOrReachSet.IndexSafeSet,TimeHorizon+1) = 1; % initializing the value function on the reach set
         end
         
     otherwise
@@ -665,16 +719,21 @@ for i = TimeHorizon:-1:1
         NextValueFuncConservative = ValueFunctionConservative(:,i+1); % saving in a temporary variable the value function of the next step
         ValueFunctionTempConservative = zeros(NumberOfPoints,1);
         OptInputTempConservative = zeros(NumberOfPoints,1);
+
+        NextValueFuncQP = ValueFunctionQP(:,i+1); % saving in a temporary variable the value function of the next step
+        ValueFunctionTempQP = zeros(NumberOfPoints,1);
+        OptInputTempQP = zeros(NumberOfPoints,1);
     end
     
     
-    sumTime = 0;
-    sumIt = 0;
     
+    tic;
+
     for j = 1:NumberOfPoints % iterates over the number of points
-        x = Grid_x(j,:)'; % getting the current state to be updated
         
         tempAmbiguityType = AmbiguityType; % This is necessary due to the parfor loop below
+
+        x = Grid_x(j,:)'; % getting the current state to be updated
         
         % Since we now have two value function for
         % the Kernel ambiguity we need to modify
@@ -682,20 +741,21 @@ for i = TimeHorizon:-1:1
         if strcmp(tempAmbiguityType,'KernelAmbiguity')
             tempValueFuncMatrix = zeros(NumberInputs,1);
             tempValueFuncConservative = zeros(NumberInputs,1);
+            tempValueFuncQP = zeros(NumberInputs,1);
         else
             tempValueFunc = zeros(NumberInputs,1);
         end
         
-        tic;
         for uCounter = 1:NumberInputs
             u = InputPartition(uCounter,:)'; % iterating over the number of inputs
             
-            % Since we now have two value function for
+            % Since we now have three value functions for
             % the Kernel ambiguity we need to modify
             % this
             if strcmp(tempAmbiguityType,'KernelAmbiguity')
                 tempValueFuncConservative(uCounter)  = iterateValueFunction(x,u,NextValueFuncConservative,StatePartitionObj,'Conservative');	 % getting the new value for the value function
                 tempValueFuncMatrix(uCounter) = iterateValueFunction(x,u,NextValueFunc,StatePartitionObj,'Matrix');	 % getting the new value for the value function
+                tempValueFuncQP(uCounter) = iterateValueFunction(x,u,NextValueFuncQP,StatePartitionObj,'QP');	 % getting the new value for the value function
             else
                 tempValueFunc(uCounter) = iterateValueFunction(x,u,NextValueFunc,StatePartitionObj,[]);	 % getting the new value for the value function
             end
@@ -704,43 +764,44 @@ for i = TimeHorizon:-1:1
         if strcmp(tempAmbiguityType,'KernelAmbiguity')
             [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFuncMatrix); % storing the optimal value function and policy
             [ValueFunctionTempConservative(j),OptInputTempConservative(j)] = max(tempValueFuncConservative); % storing the optimal value function and policy
+            [ValueFunctionTempQP(j),OptInputTempQP(j)] = max(tempValueFuncQP); % storing the optimal value function and policy
         else
             [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
         end
-        
-        Lastime = toc;
-        sumTime = sumTime + Lastime;
-        sumIt = sumIt + 1;
-        
-        % Printing on the screen
-        tempInt = double(TimeHorizon-i+1);
-        iterates = RemainingIterations(2,[[tempInt;j],[TimeHorizon;NumberOfPoints]],NumberInputs,[]); % This is the number of iterations completes so far. The name of the matlab function may be misleading
-        
-        if NumberOfPoints > 200
-            if mod(j,15) == 0
-                PrintInnerLoop(total_iterations,iterates,sumTime/sumIt,CurrentAmbiguity,OuterLoopInfo);
-                sumTime = 0;
-                sumIt = 0;
-            end
-        else
-            if (mod(j,2) == 0)
-                PrintInnerLoop(total_iterations,iterates,sumTime/sumIt,CurrentAmbiguity,OuterLoopInfo);
-                sumTime = 0;
-                sumIt = 0;
-            end
-        end
-        
+
     end
+
+    Lastime = toc;
     
-    out.ValueFunction(:,i) = ValueFunctionTemp;
-    out.OptInput(:,i) = OptInputTemp;
+    ValueFunction(:,i) = ValueFunctionTemp;
+    OptInput(:,i) = OptInputTemp;
     
-    if strcmp(tempAmbiguityType,'KernelAmbiguity')
-        out.ValueFunctionConservative(:,i) = ValueFunctionTempConservative;
-        out.OptInputConservative(:,i) = OptInputTempConservative;
+    if strcmp(AmbiguityType,'KernelAmbiguity')
+        ValueFunctionConservative(:,i) = ValueFunctionTempConservative;
+        OptInputConservative(:,i) = OptInputTempConservative;
+
+        ValueFunctionQP(:,i) = ValueFunctionTempQP;
+        OptInputQP(:,i) = OptInputTempQP;
     end
-    
+    % Printing on the screen
+    tempInt = double(TimeHorizon-i+1);
+    iterates = RemainingIterations(1,[tempInt,TimeHorizon],NumberOfPoints*NumberInputs,[]); % This is the number of iterations completes so far. The name of the matlab function may be misleading
+    PrintInnerLoop(total_iterations,iterates,Lastime,CurrentAmbiguity,OuterLoopInfo);
 end
+
+out.ValueFunction = ValueFunction;
+out.OptInput = OptInput;
+
+if strcmp(AmbiguityType,'KernelAmbiguity')
+    out.ValueFunctionConservative = ValueFunctionConservative;
+    out.OptInputConservative = OptInputConservative;
+
+    out.ValueFunctionQP = ValueFunctionQP;
+    out.OptInputQP = OptInputQP;
+end
+
+
+
 end
 
 

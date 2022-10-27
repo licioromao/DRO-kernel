@@ -54,10 +54,13 @@ switch TypeOfVectorField
                 
                 ValueFunction = OuputOfMonteCarloSimulationFunc{i}.ValueFunction;
                 ValueFunctionConservative = OuputOfMonteCarloSimulationFunc{i}.ValueFunctionConservative;
+                ValueFunctionMatrix = OuputOfMonteCarloSimulationFunc{i}.ValueFunctionMatrix;
+
                 plot(X,ValueFunctionConservative,'LineWidth',1.5);
                 hold on
                 plot(X,ValueFunction,'LineWidth',1.5)
-                legend({'ValueFuncConservative','ValueFunction'})
+                plot(X,ValueFunctionMatrix,'LineWidth',1.5)
+                legend({'ValueFuncConservative','ValueFunction','ValueFunctionMatrix'})
                 title('Comparison Kernel ValueFunc')
             end
         end

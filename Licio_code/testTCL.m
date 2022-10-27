@@ -1,6 +1,3 @@
-AddFunctionPaths();
-
-
 % Empty to enable printing information of the script
 StructNoAmbiguity.Name = [];
 StructKernelAmbiguity.Name = [];
@@ -8,15 +5,16 @@ StructMomentAmbiguity.Name = [];
 StructKLdivAmbiguity.Name = [];
 
 % Time horizon
-N = int16(4);
+N = int16(8);
 
 % Number of points between 18 and 24 degree 
-TCLpartition = 5;
+TCLpartition = 80;
 
-mTCL = 100;
-ep = [0.005 ];
+mTCL = 1000;
+% 0.01, 0.05, 0.5
+ep = [0.001,1e-5];
 rhoMu = [0.7];
-rhoSigma = [0.5];
+rhoSigma = [3];
 
 N_TCL = size(mTCL,2);
 N_ep = size(ep,2);
@@ -62,7 +60,9 @@ for i1=1:N_TCL
                 % Parameters of the KL ambiguity set
                 StructKLdivAmbiguity.ep = ep(i2);               
                 
-                TCL_ResultsPath{index} = TCL(N,TCLpartition,mTCL(i1),{StructNoAmbiguity,StructKernelAmbiguity,StructMomentAmbiguity,StructKLdivAmbiguity},OuterLoopInfo);
+                % StructKernelAmbiguity,StructMomentAmbiguity,StructKLdivAmbiguity
+
+                TCL_ResultsPath{index} = TCL(N,TCLpartition,mTCL(i1),{StructNoAmbiguity,StructKernelAmbiguity},OuterLoopInfo);
                 
                 timeIteration = toc(timeIterarionKey); % Estimating how long time it took the last iteration
                 
@@ -76,8 +76,6 @@ end
 PathsString = sprintf('./Results/results_%s/TCL/paths_%s.mat',char(java.net.InetAddress.getLocalHost.getHostName),TCL_ResultsPath{end}.FileName);
 
 save(PathsString);
-
-RemoveFunctionPaths();
 
 
 

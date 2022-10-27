@@ -55,6 +55,9 @@ switch TypeOfVectorField % checking the type of ambiguity
             if strcmp(ValueFunc{i}.AmbiguityType,'KernelAmbiguity')
                 sum_Safety_2 = zeros(NumberOfPoints,1);
                 InputsConservative = ValueFunc{i}.OptInputConservative;
+
+                sum_Safety_3 = zeros(NumberOfPoints,1);
+                InputsQP = ValueFunc{i}.OptInputQP;
             end
             
             
@@ -63,22 +66,32 @@ switch TypeOfVectorField % checking the type of ambiguity
                 for j = 1:MC
                     sum_Safety(k) = sum_Safety(k) + SimulateTrajectory(x0,Partition,Inputs,TimeHorizon,'TCL',param);
                     sum_Safety_2(k) = sum_Safety_2(k) + SimulateTrajectory(x0,Partition,InputsConservative,TimeHorizon,'TCL',param);
+                    sum_Safety_3(k) = sum_Safety_3(k) + SimulateTrajectory(x0,Partition,InputsQP,TimeHorizon,'TCL',param);
                 end
-            end
-            
-            if strcmp(ValueFunc{i}.AmbiguityType,'KernelAmbiguity')
-                out{i}.ValueFunctionConservative = ValueFunc{i}.ValueFunctionConservative(:,1);
-                out{i}.OptInputConservative = ValueFunc{i}.OptInputConservative;
-                out{i}.EmpiricalValueFuncConservative = sum_Safety_2/MC;
             end
             
             out{i}.ValueFunction = ValueFunc{i}.ValueFunction(:,1);
             out{i}.OptInput = ValueFunc{i}.OptInput;
+            out{i}.EmpiricalValueFunc = sum_Safety/MC;
+
+            if strcmp(ValueFunc{i}.AmbiguityType,'KernelAmbiguity')
+                out{i}.ValueFunctionConservative = ValueFunc{i}.ValueFunctionConservative(:,1);
+                out{i}.OptInputConservative = ValueFunc{i}.OptInputConservative;
+                out{i}.EmpiricalValueFuncConservative = sum_Safety_2/MC;
+
+                out{i}.ValueFunctionMatrix = ValueFunc{i}.ValueFunction(:,1);
+                out{i}.OptInputMatrix = ValueFunc{i}.OptInput;
+                out{i}.EmpiricalValueFuncMatrix = sum_Safety/MC;
+
+                out{i}.ValueFunction = ValueFunc{i}.ValueFunctionQP(:,1);
+                out{i}.OptInput = ValueFunc{i}.OptInputQP;
+                out{i}.EmpiricalValueFunc = sum_Safety_3/MC;
+            end
+
             out{i}.AmbiguityType = ValueFunc{i}.AmbiguityType;
             out{i}.TypeOfVectorField = ValueFunc{i}.TypeOfVectorField;
             out{i}.TimeHorizon = ValueFunc{i}.N;
-            out{i}.EmpiricalValueFunc = sum_Safety/MC;
-            
+             
         end
             toc
         
