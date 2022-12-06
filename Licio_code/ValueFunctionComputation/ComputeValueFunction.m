@@ -580,7 +580,6 @@ switch TypeOfVectorField
      case 'TCL'
         
         NumberOfPoints = param.NumberOfPartitions; % number of points of the value function
-        NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
         
         
         if isempty(IndexSafeAndOrReachSet)
@@ -605,7 +604,6 @@ switch TypeOfVectorField
     case 'ChainInt'
         
         NumberOfPoints = param.NumberOfPartitions(1)*param.NumberOfPartitions(2); % number of points of the value function
-        NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
         
         
         if isempty(IndexSafeAndOrReachSet)
@@ -723,55 +721,43 @@ for i = TimeHorizon:-1:1
         NextValueFuncQP = ValueFunctionQP(:,i+1); % saving in a temporary variable the value function of the next step
         ValueFunctionTempQP = zeros(NumberOfPoints,1);
         OptInputTempQP = zeros(NumberOfPoints,1);
+
+        AllNextValueFunc.ValueFunc = NextValueFunc;
+        AllNextValueFunc.ValueFuncConservative = NextValueFuncConservative;
+        AllNextValueFunc.ValueFuncQP = NextValueFuncQP;
+
+    else
+        AllNextValueFunc = NextValueFunc;
     end
     
     
     
-    tic;
+    t_start = tic;
 
-    for j = 1:NumberOfPoints % iterates over the number of points
-        
-        tempAmbiguityType = AmbiguityType; % This is necessary due to the parfor loop below
-
-        x = Grid_x(j,:)'; % getting the current state to be updated
-        
-        % Since we now have two value function for
-        % the Kernel ambiguity we need to modify
-        % this
-        if strcmp(tempAmbiguityType,'KernelAmbiguity')
-            tempValueFuncMatrix = zeros(NumberInputs,1);
-            tempValueFuncConservative = zeros(NumberInputs,1);
-            tempValueFuncQP = zeros(NumberInputs,1);
-        else
-            tempValueFunc = zeros(NumberInputs,1);
-        end
-        
-        for uCounter = 1:NumberInputs
-            u = InputPartition(uCounter,:)'; % iterating over the number of inputs
-            
-            % Since we now have three value functions for
-            % the Kernel ambiguity we need to modify
-            % this
-            if strcmp(tempAmbiguityType,'KernelAmbiguity')
-                tempValueFuncConservative(uCounter)  = iterateValueFunction(x,u,NextValueFuncConservative,StatePartitionObj,'Conservative');	 % getting the new value for the value function
-                tempValueFuncMatrix(uCounter) = iterateValueFunction(x,u,NextValueFunc,StatePartitionObj,'Matrix');	 % getting the new value for the value function
-                tempValueFuncQP(uCounter) = iterateValueFunction(x,u,NextValueFuncQP,StatePartitionObj,'QP');	 % getting the new value for the value function
-            else
-                tempValueFunc(uCounter) = iterateValueFunction(x,u,NextValueFunc,StatePartitionObj,[]);	 % getting the new value for the value function
+    switch AmbiguityType
+        case 'NoAmbiguity'
+            for j = 1:NumberOfPoints % iterates over the number of points
+                x = Grid_x(j,:)'; % getting the current state to be updated
+                if strcmp(AmbiguityType,'KernelAmbiguity')
+                    [ValueFunctionTemp(j),OptInputTemp(j),ValueFunctionTempConservative(j),OptInputTempConservative(j),ValueFunctionTempQP(j),OptInputTempQP(j)] = ...
+                        InnerLoopComputation(x,iterateValueFunction,StatePartitionObj,AllNextValueFunc,InputPartition,AmbiguityType);
+                else
+                    [ValueFunctionTemp(j),OptInputTemp(j),~,~,~,~] = InnerLoopComputation(x,iterateValueFunction,StatePartitionObj,AllNextValueFunc,InputPartition,AmbiguityType);
+                end
             end
-        end
-        
-        if strcmp(tempAmbiguityType,'KernelAmbiguity')
-            [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFuncMatrix); % storing the optimal value function and policy
-            [ValueFunctionTempConservative(j),OptInputTempConservative(j)] = max(tempValueFuncConservative); % storing the optimal value function and policy
-            [ValueFunctionTempQP(j),OptInputTempQP(j)] = max(tempValueFuncQP); % storing the optimal value function and policy
-        else
-            [ValueFunctionTemp(j),OptInputTemp(j)] = max(tempValueFunc); % storing the optimal value function and policy
-        end
-
+        otherwise
+            parfor j = 1:NumberOfPoints % iterates over the number of points
+                x = Grid_x(j,:)'; % getting the current state to be updated
+                if strcmp(AmbiguityType,'KernelAmbiguity')
+                    [ValueFunctionTemp(j),OptInputTemp(j),ValueFunctionTempConservative(j),OptInputTempConservative(j),ValueFunctionTempQP(j),OptInputTempQP(j)] = ...
+                        InnerLoopComputation(x,iterateValueFunction,StatePartitionObj,AllNextValueFunc,InputPartition,AmbiguityType);
+                else
+                    [ValueFunctionTemp(j),OptInputTemp(j),~,~,~,~] = InnerLoopComputation(x,iterateValueFunction,StatePartitionObj,AllNextValueFunc,InputPartition,AmbiguityType);
+                end
+            end
     end
 
-    Lastime = toc;
+    Lastime = toc(t_start);
     
     ValueFunction(:,i) = ValueFunctionTemp;
     OptInput(:,i) = OptInputTemp;
@@ -800,7 +786,89 @@ if strcmp(AmbiguityType,'KernelAmbiguity')
     out.OptInputQP = OptInputQP;
 end
 
+end
 
+function [ValueFunc,OptInput,ValueFuncConservative,OptConservative,ValueFuncQP,OptInputQP] = ... 
+    InnerLoopComputation(x,iterateValueFunction,StatePartitionObj,AllNextValueFunc,InputPartition,AmbiguityType)
+
+NumberInputs = size(InputPartition,1); % Number of all possible combination of control inputs
+
+if strcmp(AmbiguityType,'KernelAmbiguity') 
+    tempValueFuncMatrix = zeros(NumberInputs,1);
+    tempValueFuncConservative = zeros(NumberInputs,1);
+    tempValueFuncQP = zeros(NumberInputs,1);
+else
+    tempValueFunc = zeros(NumberInputs,1);
+end
+
+if NumberInputs > 5
+    parfor uCounter = 1:NumberInputs
+        u = InputPartition(uCounter,:)'; % iterating over the number of inputs
+        if strcmp(AmbiguityType,'KernelAmbiguity')
+            [tempValueFuncMatrix(uCounter),tempValueFuncConservative(uCounter),tempValueFuncQP(uCounter)] = ...
+                InnerLoopInputs(x,u,iterateValueFunction,StatePartitionObj,AllNextValueFunc,AmbiguityType);
+        else
+            [tempValueFunc(uCounter),~,~] = ...
+                InnerLoopInputs(x,u,iterateValueFunction,StatePartitionObj,AllNextValueFunc,AmbiguityType);
+        end
+
+    end
+else
+    for uCounter = 1:NumberInputs
+        u = InputPartition(uCounter,:)'; % iterating over the number of inputs
+        if strcmp(AmbiguityType,'KernelAmbiguity')
+            [tempValueFuncMatrix(uCounter),tempValueFuncConservative(uCounter),tempValueFuncQP(uCounter)] = ...
+                InnerLoopInputs(x,u,iterateValueFunction,StatePartitionObj,AllNextValueFunc,AmbiguityType);
+        else
+            [tempValueFunc(uCounter),~,~] = ...
+                InnerLoopInputs(x,u,iterateValueFunction,StatePartitionObj,AllNextValueFunc,AmbiguityType);
+        end
+
+    end
+end
+
+
+if strcmp(AmbiguityType,'KernelAmbiguity')
+    [ValueFunc,OptInput] = max(tempValueFuncMatrix); % storing the optimal value function and policy
+    [ValueFuncConservative,OptConservative] = max(tempValueFuncConservative); % storing the optimal value function and policy
+    [ValueFuncQP,OptInputQP] = max(tempValueFuncQP); % storing the optimal value function and policy
+    
+else
+    [ValueFunc,OptInput] = max(tempValueFunc); % storing the optimal value function and policy
+    ValueFuncConservative = [];
+    OptConservative =[];
+    ValueFuncQP = [];
+    OptInputQP = [];
+end
+
+end
+
+
+function [ValueFunc,ValueFuncConservative,ValueFuncQP] = InnerLoopInputs(x,u,iterateValueFunction,StatePartitionObj,AllNextValueFunc,AmbiguityType)
+
+% If the Ambiguity is the Kernel, we have three different ways of computing
+% the value function, as per our internal discussions.
+if strcmp(AmbiguityType,'KernelAmbiguity')
+    NextValueFunc = AllNextValueFunc.ValueFunc; % Getting next value function matrix
+    NextValueFuncConservative =  AllNextValueFunc.ValueFuncConservative; % Getting next value function conservative
+    NextValueFuncQP = AllNextValueFunc.ValueFuncQP; % Getting next value function QP
+else
+    NextValueFunc = AllNextValueFunc;
+end
+
+% Since we now have three value functions for
+% the Kernel ambiguity we need to modify
+% this
+if strcmp(AmbiguityType,'KernelAmbiguity')
+    ValueFunc = iterateValueFunction(x,u,NextValueFuncConservative,StatePartitionObj,'Conservative');	 % getting the new value for the value function
+    ValueFuncConservative = iterateValueFunction(x,u,NextValueFunc,StatePartitionObj,'Matrix');	 % getting the new value for the value function
+    ValueFuncQP = iterateValueFunction(x,u,NextValueFuncQP,StatePartitionObj,'QP');	 % getting the new value for the value function
+    %fprintf('\nInner loop:%.4f,%d,%.4f\n',[x,u,ValueFuncQP])
+else
+    ValueFunc = iterateValueFunction(x,u,NextValueFunc,StatePartitionObj,[]);	 % getting the new value for the value function
+    ValueFuncConservative = [];
+    ValueFuncQP = [];
+end
 
 end
 

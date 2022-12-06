@@ -61,6 +61,7 @@ switch TypeOfVectorField
         NotImplemented();
 end
 
+
 if ~isempty(ep)
     AppendPath = sprintf('/ep_%.4f',ep);
     DirectoryPath = strcat(DirectoryPath,AppendPath);
@@ -94,8 +95,6 @@ elseif ~isempty(rhoMu)
         end
         
     end
-else
-    error('The should be at least one parameter for the Ambiguity sets.');
 end
 
 

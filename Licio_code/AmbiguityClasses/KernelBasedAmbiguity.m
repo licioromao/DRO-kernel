@@ -72,7 +72,8 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             Constraints = [Constraints,alpha'*tempKernel*alpha - 2/M*alpha'*tempKernel*ones(M,1) + (1/M^2)*ones(M,1)'*tempKernel*ones(M,1) <= obj.epsilon^2];
             
             options = sdpsettings('solver','mosek','verbose',0); % options to solve the optimisation problem
-            objective = -obj.c'*alpha; % objective function
+            lambda = 10;
+            objective = obj.c'*alpha + lambda*norm(alpha,1); % objective function
 
             sol = optimize(Constraints,objective,options);
 
@@ -92,7 +93,7 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             obj.OptRes.p = value(alpha);
             %fprintf('In this formulation, we cannot recover the value of the optimal distribution \n');
             
-            obj.OptRes.opt_value = value(-objective);
+            obj.OptRes.opt_value = value(objective) - lambda*value(norm(alpha,1));
 
         end
         
