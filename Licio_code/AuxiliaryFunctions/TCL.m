@@ -9,6 +9,7 @@ param.N = int8(TimeHorizon);
 Grid = StatePartition(param.NumberOfPartitions,param.SafeSet,'TCL'); % Generate the partition of the state space
 InputPartition = generateInputPartition([],'TCL'); % Generate a vector with all possible combinations of inputs
 
+paramSave.pathProject = OuterLoopInfo.pathProject;
 
 L = length(StructAmbiguityTypes);
 
@@ -18,7 +19,7 @@ for i = 1:L
             TotalTime = tic;
             ValueFuncNoAmbiguity = MainValueFunctionIteration(Grid,InputPartition,'TCL',StructAmbiguityTypes{i},exist('ValueFuncNoAmbiguity','var'),param);
             ValueFuncNoAmbiguity.time = toc(TotalTime);
-            paramSave = [];
+            
             
         case 'MomentAmbiguity'
             TotalTime1 = tic;

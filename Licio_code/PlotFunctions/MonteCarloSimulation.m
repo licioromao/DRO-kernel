@@ -78,7 +78,7 @@ switch TypeOfVectorField % checking the type of ambiguity
                 InfoValueFunc{index} = ParamAmbiguity;
                 Safety = zeros(NumberOfPoints,1);
 
-                parfor k1=1:NumberOfPoints
+                for k1=1:NumberOfPoints
                     x0 = grid_x(k1);
 
                     if strcmp(InfoValueFunc{index}.Name,'KernelAmbiguity')

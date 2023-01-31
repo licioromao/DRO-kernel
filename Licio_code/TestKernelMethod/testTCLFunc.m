@@ -1,10 +1,6 @@
-clear all
-close all
+function out = testTCLFunc(horizon,TCLpartition,mTCL,ep,rhoMu,rhoSigma,pathProject)
 
-addpath AuxiliaryFunctions/
-pathProject = projectPath;
-
-AddFunctionPaths(pathProject);
+N = int16(horizon); 
 
 % Empty to enable printing information of the script
 StructNoAmbiguity.Name = [];
@@ -12,18 +8,6 @@ StructKernelAmbiguity.Name = [];
 StructMomentAmbiguity.Name = [];
 StructKLdivAmbiguity.Name = [];
 
-% Time horizon
-N = int16(9);
-
-% Number of points between 18 and 24 degree 
-TCLpartition = 10;
-
-mTCL = 10;
-% 0.01, 0.05, 0.5
-%ep = [0,1e-4,0.01];
-ep = [];
-rhoMu = 0.8;
-rhoSigma = 3.5;
 
 if ~isempty(mTCL)
     N_TCL = size(mTCL,2);
@@ -50,7 +34,7 @@ else
 end
 
 
-if ~isempty(rhoSigma)  
+if ~isempty(rhoSigma)
     N_Sigma = size(rhoSigma,2);
     total_iterations = total_iterations*N_Sigma;
 else
@@ -64,7 +48,7 @@ TCL_ResultsPath = cell(total_iterations,1);
 StructNoAmbiguity.Name = 'NoAmbiguity';
 StructKernelAmbiguity.Name = 'KernelAmbiguity';
 StructMomentAmbiguity.Name = 'MomentAmbiguity';
-StructKLdivAmbiguity.Name = 'KLdivAmbiguity';
+%StructKLdivAmbiguity.Name = 'KLdivAmbiguity';
 
 
 timeIteration = 2; % A guess on the first iteration
@@ -130,15 +114,10 @@ for i1=1:N_TCL
 end
 
 
-PathsString = sprintf('./Results/results_%s/TCL/paths_%s.mat',char(java.net.InetAddress.getLocalHost.getHostName),TCL_ResultsPath(end).FileName);
+out = strcat(pathProject, ... 
+    sprintf('/Results/results_%s/TCL/paths_%s.mat',char(java.net.InetAddress.getLocalHost.getHostName), ... 
+    TCL_ResultsPath(end).FileName));
 
-save(PathsString);
+save(out)
 
-RemoveFunctionPaths(pathProject);
-
-
-
-
-
-
-
+end
