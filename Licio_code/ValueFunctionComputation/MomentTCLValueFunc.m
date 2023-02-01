@@ -116,7 +116,7 @@ classdef MomentTCLValueFunc < TCLValueFunc
             grid_x = state_partition.get_values.partition.grid_x;
 
             % Creating a progress bar of the value function computation
-            total_iterations = time_horizon*(number_of_points)*number_of_inputs;
+            total_iterations = double(time_horizon)*(number_of_points)*number_of_inputs;
             print_inner_loop(total_iterations,0,0,obj.ambiguity_type,outer_loop_info);
 
             for i = time_horizon:-1:1
