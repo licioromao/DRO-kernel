@@ -1,4 +1,4 @@
-function [] = RemoveFunctionPaths(pathProject)
+function [] = remove_function_paths(pathProject)
 
 rmpath(strcat(pathProject,'/AmbiguityClasses/'));
 rmpath(strcat(pathProject,'/AuxiliaryFunctions/'));

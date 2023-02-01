@@ -2,50 +2,30 @@ classdef VectorFieldTCL
     
     
     properties
-        NextState
-        Noise
+        next_state
+        noise
     end
     
     properties (Access = private)
-        CurrentState % stores the current state
-        Input % input applied to the dynamics
+        current_state % stores the current state
+        input % input applied to the dynamics
         R % Thermal resistence in Celsius/kW
         C % Thermal capacity ini kW/Celsius
         P % Range of energy transfer to or from the thermal mass in kW
         eta % Control efficiency
         h % Discretization time in hours
         alpha
-        theta
-        
-        
+        theta    
     end
     
     methods
         function obj = VectorFieldTCL(x,u,param)
             
             
-            VerifyArguments(x,u,param);
+            verify_arguments(x,u,param);
             
-            obj.CurrentState = x;
-            obj.Input = u;
-            
-            obj.R = param.R;
-            obj.C = param.C;
-            obj.P = param.P;
-            obj.eta = param.eta;
-            obj.h = param.h;
-            obj.alpha = param.alpha;
-            obj.theta = param.theta;
-            obj.NextState = [];
-            obj.Noise = [];
-        end
-        
-        function obj = SetValues(obj,x,u,param)
-            
-            VerifyArguments(x,u,param);
-            
-            obj.CurrentState = x;
-            obj.Input = u;
+            obj.current_state = x;
+            obj.input = u;
             
             obj.R = param.R;
             obj.C = param.C;
@@ -54,12 +34,31 @@ classdef VectorFieldTCL
             obj.h = param.h;
             obj.alpha = param.alpha;
             obj.theta = param.theta;
+            obj.next_state = [];
+            obj.noise = [];
+        end
+        
+        function obj = set_values(obj,x,u,param)
+            
+            verify_arguments(x,u,param);
+            
+            obj.current_state = x;
+            obj.input = u;
+            
+            obj.R = param.R;
+            obj.C = param.C;
+            obj.P = param.P;
+            obj.eta = param.eta;
+            obj.h = param.h;
+            obj.alpha = param.alpha;
+            obj.theta = param.theta;
             
         end
         
-        function out = GetValues(obj)
-            out.CurrentState = obj.CurrentState;
-            out.Input = obj.Input;
+        function out = get_values(obj)
+
+            out.current_state = obj.current_state;
+            out.input = obj.input;
             
             out.R = obj.R;
             out.C = obj.C;
@@ -71,24 +70,23 @@ classdef VectorFieldTCL
             
         end
         
-        function out = IterateDynamics(obj)
+        function out = iterate_dynamics(obj)
             
             % This is the vector field of Insoon's paper called "A dynamic game approach to distributionally robust safety specifications for stochastic systems" in Automatica.
             
-            % Input: Noise - This is the noise affecting the system
-            %        Input - Control input
-            %        CurrentState - current state of the model
+            % Input: noise - This is the noise affecting the system
+            %        input - Control input
+            %        current_state - current state of the model
             %        param - is a structure that contains all the parameters of the
             %        model
             %
             % Output: out - next state of the model
-            if isempty(obj.Noise)
+            if isempty(obj.noise)
                 error('You must first initialize the field Noise');
             else
                 
-                out = obj.CurrentState*obj.alpha + (1-obj.alpha)*(obj.theta - obj.eta*obj.R*obj.P*obj.Input) + obj.Noise;
-                
-                
+                out = obj.current_state*obj.alpha + (1-obj.alpha)*(obj.theta...
+                                      -obj.eta*obj.R*obj.P*obj.input) + obj.noise;  
             end
             
         end
@@ -96,7 +94,7 @@ classdef VectorFieldTCL
     
 end
 
-function VerifyArguments(x,u,param)
+function verify_arguments(x,u,param)
 
 if ~isvector(x) || ischar(x)
     error('The first argument must be a row or column vector of numbers');
@@ -110,7 +108,9 @@ elseif length(u) ~= 1
     error('The dimension of the second argument must be 1');
 end
 
-if ~isfield(param,'R') || ~isfield(param,'C') || ~isfield(param,'P') || ~isfield(param,'eta') || ~isfield(param,'h') || ~isfield(param,'alpha') || ~isfield(param,'theta')
+if ~isfield(param,'R') || ~isfield(param,'C') || ~isfield(param,'P') ||...
+                ~isfield(param,'eta') || ~isfield(param,'h') || ~isfield(param,'alpha')...
+                                                || ~isfield(param,'theta')
     error('The third argument must a structure with fields R, C, P, eta, h, theta, and alpha');
 end
 

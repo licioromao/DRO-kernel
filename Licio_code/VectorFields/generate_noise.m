@@ -1,4 +1,4 @@
-function out = generateNoise(param,type)
+function out = generate_noise(param,type)
 
 % This function generates the noise that acts on the dynamics of the
 % Fishery management problem and TCL problem in Insoon Yang's paper.
@@ -21,6 +21,6 @@ switch type
     case 'CarPoleNL'
         out = random(param.w,4,1);
     otherwise
-        NotImplemented();
+        not_implemented();
         
 end

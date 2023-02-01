@@ -2,127 +2,144 @@ clear all
 close all
 
 addpath AuxiliaryFunctions/
-pathProject = projectPath;
+path_project = project_path;
 
-AddFunctionPaths(pathProject);
+add_function_paths(path_project);
 
 % Empty to enable printing information of the script
-StructNoAmbiguity.Name = [];
-StructKernelAmbiguity.Name = [];
-StructMomentAmbiguity.Name = [];
-StructKLdivAmbiguity.Name = [];
+struct_no_ambiguity.name = [];
+struct_kernel_ambiguity.name = [];
+struct_moment_ambiguity.name = [];
+struct_KL_div_ambiguity.name = [];
 
-% Time horizon
-N = int16(9);
+time_horizon = int16(9);
 
 % Number of points between 18 and 24 degree 
-TCLpartition = 10;
+number_of_points = 80;
+number_of_MC_simulation = 1000; % Set this to be a vector if want to run 
+                              % the test with different value for this
+                              % parameter
 
-mTCL = 10;
-% 0.01, 0.05, 0.5
-%ep = [0,1e-4,0.01];
-ep = [];
-rhoMu = 0.8;
-rhoSigma = 3.5;
+radius_ambiguity = []; % Define the radius of distance-based ambiguity sets.
+                       % If this is a vector, it will run several
+                       % simulations, one for each entry of the vector.
 
-if ~isempty(mTCL)
-    N_TCL = size(mTCL,2);
-    total_iterations = N_TCL;
+% The next two lines define values for the moment ambiguity set. If any of
+% these are a vector, different simulations (once for each entry) are run.
+radius_mean = 0.8;
+radius_variance = 3.5;
+
+if ~isempty(number_of_MC_simulation)
+    number_of_sumulations_TCL = size(number_of_MC_simulation,2);
+    total_iterations = number_of_sumulations_TCL;
 else
-    N_TCL = 0;
+    number_of_sumulations_TCL = 0;
     total_iterations = 1;
 end
 
 
-if ~isempty(ep)
-    N_ep = size(ep,2);
-    total_iterations = total_iterations*N_ep;
+if ~isempty(radius_ambiguity)
+    number_of_radius_distance = size(radius_ambiguity,2);
+    total_iterations = total_iterations*number_of_radius_distance;
 else
-    N_ep = 0;
+    number_of_radius_distance = 0;
 end
 
 
-if ~isempty(rhoMu)
-    N_Mu = size(rhoMu,2);
-    total_iterations = total_iterations*N_Mu;
+if ~isempty(radius_mean)
+    number_of_simulations_mean_moment = size(radius_mean,2);
+    total_iterations = total_iterations*number_of_simulations_mean_moment;
 else
-    N_Mu = 0;
+    number_of_simulations_mean_moment = 0;
 end
 
 
-if ~isempty(rhoSigma)  
-    N_Sigma = size(rhoSigma,2);
-    total_iterations = total_iterations*N_Sigma;
+if ~isempty(radius_variance)  
+    number_of_simulations_variance_moment = size(radius_variance,2);
+    total_iterations = total_iterations*number_of_simulations_variance_moment;
 else
-    N_Sigma = 0;
+    number_of_simulations_variance_moment = 0;
 end
-
-TCL_ResultsPath = cell(total_iterations,1);
 
 % In addition to not passing as parameter in the function below, you should
 % also comment here to ommit any ambiguity set
-StructNoAmbiguity.Name = 'NoAmbiguity';
-StructKernelAmbiguity.Name = 'KernelAmbiguity';
-StructMomentAmbiguity.Name = 'MomentAmbiguity';
-StructKLdivAmbiguity.Name = 'KLdivAmbiguity';
+%struct_no_ambiguity.name = 'NoAmbiguity';
+%struct_kernel_ambiguity.name = 'KernelAmbiguity';
+%struct_kernel_ambiguity.gamma = 10;
+struct_moment_ambiguity.name = 'MomentAmbiguity';
+%struct_KL_div_ambiguity.name = 'KLdivAmbiguity';
 
 
-timeIteration = 2; % A guess on the first iteration
-OuterLoopInfo.TypeVectorField = 'TCL';
-OuterLoopInfo.pathProject = pathProject;
+time_per_iteration = 2; % A guess on the first iteration
 
+outer_loop_info.type_vector_field = 'TCL';
+outer_loop_info.path_project = path_project;
+outer_loop_info.total_iteration = total_iterations;
+outer_loop_info.time_iteration = time_per_iteration;
 
-StructKernelAmbiguity.gamma = 10;
+TCL_results_path = [];
 
-OuterLoopInfo.TotalIteration = total_iterations;
-OuterLoopInfo.TimeIteration = timeIteration;
-TCL_ResultsPath = [];
+for i1=1:number_of_sumulations_TCL
+    param = compute_transition(outer_loop_info.type_vector_field,...
+                                number_of_points,number_of_MC_simulation(i1));
 
+    index = remaining_iterations(1,[i1,number_of_sumulations_TCL],...
+                                    total_iterations/number_of_sumulations_TCL,[]);
 
-for i1=1:N_TCL
-    param = ComputeTransition(OuterLoopInfo.TypeVectorField,TCLpartition,mTCL(i1));
-    index = RemainingIterations(1,[i1,N_TCL],total_iterations/N_TCL,[]);
+    outer_loop_info.current_iteration = index;
 
-    OuterLoopInfo.CurrentIteration = index;
-    temp = TCL(N,{StructNoAmbiguity},OuterLoopInfo,param); % Solve the DP iteration without ambiguity set
-    TCL_ResultsPath = [TCL_ResultsPath;temp];
+%     results_TCL = TCL(time_horizon,{struct_no_ambiguity},...
+%                         outer_loop_info,param); % Solve the DP iteration without ambiguity set
+% 
+%     TCL_results_path = [TCL_results_path;results_TCL];
+%     
+    % If there exists distance-based ambiguity sets
+    if ~isempty(radius_ambiguity)
+        struct_kernel_ambiguity.m = number_of_MC_simulation(i1);
 
-    if ~isempty(ep)
-        StructKernelAmbiguity.m = mTCL(i1);
-        for i2=1:N_ep
+        for i2=1:number_of_radius_distance
             % Parameters of the kernel ambiguity set
-            timeIterarionKey = tic;
-            StructKernelAmbiguity.ep = ep(i2);
-            index = RemainingIterations(2,[[i1;i2],[N_TCL;N_ep]],N_Mu*N_Sigma,[]);
-            OuterLoopInfo.CurrentIteration = index;
+            initial_time_per_iteration = tic;
+            struct_kernel_ambiguity.radius_ambiguity = radius_ambiguity(i2);
+            index = remaining_iterations(2,[[i1;i2],...
+                                [number_of_sumulations_TCL;number_of_radius_distance]]...
+                                ,number_of_simulations_mean_moment...
+                                    *number_of_simulations_variance_moment,[]);
+            outer_loop_info.current_iteration = index;
 
-            temp = TCL(N,{StructKernelAmbiguity},OuterLoopInfo,param); % Solving DP with Kernel Ambiguity set
-            TCL_ResultsPath = [TCL_ResultsPath;temp];
+            results_TCL = TCL(time_horizon,{struct_kernel_ambiguity},...
+                                outer_loop_info,param); % Solving DP with Kernel Ambiguity set
+            TCL_results_path = [TCL_results_path;results_TCL];
 
-            timeIteration = toc(timeIterarionKey); % Estimating how long time it took the last iteration
+            time_per_iteration = toc(initial_time_per_iteration); % Estimating how long time it took the last iteration
         end
     end
 
-    if ~isempty(rhoMu) && ~isempty(rhoSigma)
+    if ~isempty(radius_mean) && ~isempty(radius_variance)
 
-        for i3=1:N_Mu
-            for i4=1:N_Sigma
+        for i3=1:number_of_simulations_mean_moment
+            for i4=1:number_of_simulations_variance_moment
 
 
                 % Parameters of the moment ambiguity set
-                StructMomentAmbiguity.rhoMu = rhoMu(i3);
-                StructMomentAmbiguity.rhoSigma = rhoSigma(i4);
+                struct_moment_ambiguity.radius_mean = radius_mean(i3);
+                struct_moment_ambiguity.radius_variance = radius_variance(i4);
 
                 % Parameters of the kernel ambiguity set
-                timeIterarionKey = tic;
+                initial_time_per_iteration = tic;
 
-                index = RemainingIterations(2,[[i3;i4],[N_Mu;N_Sigma]],1,[]);
-                OuterLoopInfo.CurrentIteration = index;
+                index = remaining_iterations(2,[[i3;i4],...
+                        [number_of_simulations_mean_moment;...
+                            number_of_simulations_variance_moment]],1,[]);
 
-                temp = TCL(N,{StructMomentAmbiguity},OuterLoopInfo,param); % Solving DP problem with Moment ambiguity set
-                TCL_ResultsPath = [TCL_ResultsPath;temp];
+                outer_loop_info.CurrentIteration = index;
 
-                timeIteration = toc(timeIterarionKey); % Estimating how long time it took the last iteration
+                results_TCL = TCL(time_horizon,{struct_moment_ambiguity},...
+                                    outer_loop_info,param); % Solving DP problem with Moment ambiguity set
+                
+                TCL_results_path = [TCL_results_path;results_TCL];
+
+                time_per_iteration = toc(initial_time_per_iteration); % Estimating how long time it took the last iteration
 
             end
         end
@@ -130,11 +147,13 @@ for i1=1:N_TCL
 end
 
 
-PathsString = sprintf('./Results/results_%s/TCL/paths_%s.mat',char(java.net.InetAddress.getLocalHost.getHostName),TCL_ResultsPath(end).FileName);
+paths_string = sprintf('./Results/results_%s/TCL/paths_%s.mat',...
+                        char(java.net.InetAddress.getLocalHost.getHostName)...
+                                ,TCL_results_path(end).file_name);
 
-save(PathsString);
+save(paths_string);
 
-RemoveFunctionPaths(pathProject);
+remove_function_paths(path_project);
 
 
 

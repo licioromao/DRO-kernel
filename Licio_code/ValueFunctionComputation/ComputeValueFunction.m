@@ -1,342 +1,351 @@
 classdef ComputeValueFunction
-    %UNTITLED6 Summary of this class goes here
-    %   Detailed explanation goes here
+    % NEED TO ADD A DETAILED DESCRIPTION HERE
     
     properties
         
-        ValueFunction % This value stores the optimal value function
-        ValueFunctionConservative % This value stores the optimal value function
-        ValueFunctionQP % This value stores the optimal value function
+        value_function % This value stores the optimal value function
+%         value_function_conservative % This value stores the optimal value function
+%         value_function_QP % This value stores the optimal value function
 
-        TypeOfVectorField % This value stores the type of Vector field
         
-        OptInput % This value stores the optimal action
-        OptInputConservative % This value stores the optimal action
-        OptInputQP % This value stores the optimal action
+        opt_input % This value stores the optimal action
+%         opt_input_conservative % This value stores the optimal action
+%         opt_input_QP % This value stores the optimal action
 
-        AmbiguityType % Type of ambiguity set
-        ParamAmbiguity % Stores the parameters of the Ambiguity type
+%        ambiguity_type % Type of ambiguity set
+%         param_ambiguity % Stores the parameters of the Ambiguity type
+%         
+%         param % structure with all the parameters of the problem
         
-        param % structure with all the parameters of the problem
+%        index_safe_reach_set % Indices of the safe and reach set
+%        index_safe_set
         
-        IndexSafeAndReachSet % Indices of the safe and reach set
-        IndexSafeSet
-        
-        N % horizon of the reach-avoid property
+        time_horizon % horizon of the reach-avoid property
         
         time % this will store the time to go through a full value function computation
     end
     
     methods
-        function obj = ComputeValueFunction(ArgParam,TypeOfVectorField,StructAmbiguityTypes)
-            
-            switch TypeOfVectorField
-                case 'TCL'
-                    NumberOfPoints = ArgParam.NumberOfPartitions; % number of points of the value function
-                case 'ChainInt'
-                    NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2); % number of points of the value function    
-                case 'Fishery'
-                    NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3); % number of points of the value function
-                case 'CarPole'
-                    NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3)*ArgParam.NumberOfPartitions(4); % number of points of the value function
-                case 'CarPoleNL'
-                    NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3)*ArgParam.NumberOfPartitions(4); % number of points of the value function
-                otherwise
-                    NotImplemented();
-            end
-            
-            
-            obj.ValueFunction = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the value function
-            obj.ValueFunctionConservative = zeros(NumberOfPoints,ArgParam.N+1);  % This value stores the optimal value function for the matrix factorization case if ambiguity set is equal to kernel
-            obj.ValueFunctionQP = zeros(NumberOfPoints,ArgParam.N+1);  % This value stores the optimal value function for the QP case if ambiguity set is equal to kernel
+        function obj = ComputeValueFunction(number_of_points,time_horizon)
 
-            obj.OptInput = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input
-            obj.OptInputConservative = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input for kernel ambiguity, which has three value functions
-            obj.OptInputQP = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input for kernel ambiguity, which has three value functions
-            
-            obj.TypeOfVectorField = TypeOfVectorField;
-            obj.AmbiguityType = StructAmbiguityTypes.Name;
-            obj.ParamAmbiguity = StructAmbiguityTypes;
-            
-            obj.param = ArgParam;
-            
-            obj.IndexSafeAndReachSet = [];
-            
-            obj.N = ArgParam.N;
-            
+%             switch TypeOfVectorField
+%                 case 'TCL'
+%                     NumberOfPoints = ArgParam.NumberOfPartitions; % number of points of the value function
+%                 case 'ChainInt'
+%                     NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2); % number of points of the value function
+%                 case 'Fishery'
+%                     NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3); % number of points of the value function
+%                 case 'CarPole'
+%                     NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3)*ArgParam.NumberOfPartitions(4); % number of points of the value function
+%                 case 'CarPoleNL'
+%                     NumberOfPoints = ArgParam.NumberOfPartitions(1)*ArgParam.NumberOfPartitions(2)*ArgParam.NumberOfPartitions(3)*ArgParam.NumberOfPartitions(4); % number of points of the value function
+%                 otherwise
+%                     NotImplemented();
+%             end
+
+
+            obj.value_function = zeros(number_of_points,time_horizon+1); % initializing the variable to store the value function
+%             obj.value_function_conservative = zeros(NumberOfPoints,ArgParam.N+1);  % This value stores the optimal value function for the matrix factorization case if ambiguity set is equal to kernel
+%             obj.value_function_QP = zeros(NumberOfPoints,ArgParam.N+1);  % This value stores the optimal value function for the QP case if ambiguity set is equal to kernel
+% 
+%             obj.opt_input = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input
+%             obj.opt_input_conservative = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input for kernel ambiguity, which has three value functions
+%             obj.opt_input_QP = zeros(NumberOfPoints,ArgParam.N+1); % initializing the variable to store the optimal input for kernel ambiguity, which has three value functions
+% 
+%             obj.type_vector_field = TypeOfVectorField;
+%             obj.ambiguity_type = StructAmbiguityTypes.Name;
+%             obj.param_ambiguity = StructAmbiguityTypes;
+% 
+%             obj.param = ArgParam;
+% 
+%             obj.index_safe_reach_set = [];
+
+            obj.time_horizon = time_horizon;
+
             obj.time = [];
         end
-        
-        function obj = getIndexReachAvoid(obj,ObjStatePartition)
-            
-            if ~(strcmp(obj.TypeOfVectorField,'Fishery') || strcmp(obj.TypeOfVectorField,'CarPole') || strcmp(obj.TypeOfVectorField,'CarPoleNL') )
-                error('This function can only be used for reach avoid specifications. Please check if this is your case.')
-            end
-            
-            % Retuns the indices of the safe and reach sets associated with the partition
-            
-            tempStatePartition = ObjStatePartition.Partition;
-            
-            switch obj.TypeOfVectorField
-                case 'Fishery'
-                    [obj.IndexSafeAndReachSet.safeIndex,obj.IndexSafeAndReachSet.reachIndex] = GetReachAvoid('3D',tempStatePartition,obj.param);
-                case 'CarPole'
-                    [obj.IndexSafeAndReachSet.safeIndex,obj.IndexSafeAndReachSet.reachIndex] = GetReachAvoid('4D',tempStatePartition,obj.param);
-                case 'CarPoleNL'
-                    [obj.IndexSafeAndReachSet.safeIndex,obj.IndexSafeAndReachSet.reachIndex] = GetReachAvoid('4D',tempStatePartition,obj.param);
-                otherwise
-                    NotImplemented(); 
-            end           
-        end
-        
-        function obj = getIndexSafety(obj,ObjStatePartition)
-            
-            if ~(strcmp(obj.TypeOfVectorField,'TCL') || strcmp(obj.TypeOfVectorField,'ChainInt'))
-                error('This function can only be used for safety specifications. Please check if this is your case.')
-            end
-            
-            % Retuns the indices of the safe set associated with the partition
-            
-            tempStatePartition = ObjStatePartition.Partition;
-            
-            
-            switch obj.TypeOfVectorField
-                case 'TCL'
-                    NumberOfPoints = size(tempStatePartition.X,1);
-                case 'ChainInt'
-                    NumberOfPoints = size(tempStatePartition.grid_x,1);
-                otherwise
-                    NotImplemented();
-            end
-            
-            
-            % Information about the safe and reach sets
-            SafeSet = obj.param.SafeSet;
-            
-            % Initializing the variables that will store the indices
-            safeIndex = false(NumberOfPoints,1);
-            
-            % Iterating over states
-            for i = 1:NumberOfPoints
-                x = tempStatePartition.grid_x(i);  % current state
-                
-                % if current state belongs to safe set, then set the
-                % corresponding index to true
-                if min(SafeSet(1) <= x) && min(x <= SafeSet(2))
-                    safeIndex(i) = true;
-                end
-            end
-            
-            % saving the results
-            obj.IndexSafeSet = safeIndex;
-            
-        end
-        
-        function obj = BackwardIteration(obj,StatePartitionObj,InputPartition)
-            
-            OuterLoopInfo = obj.param.OuterLoopInfo;
-            CurrentAmbiguity = obj.AmbiguityType;
-            
-            % Testing the value of N
-            if isempty(obj.N)
-                error('Please, initialize the field N before calling this function');
-            elseif obj.N < 0 || ~isinteger(obj.N)
-                error('N must be a positive integer (int8, int16, etc...)');
-            end
-            
-            switch obj.TypeOfVectorField
-                
-                case 'TCL'
-                    temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.TypeOfVectorField,...
-                        obj.AmbiguityType,obj.getIndexSafety(StatePartitionObj.getValues),...
-                        @obj.iterateValueFunction,CurrentAmbiguity,OuterLoopInfo,obj.param);
-                    
-                case 'ChainInt'
-                    
-                    temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.TypeOfVectorField,...
-                        obj.AmbiguityType,obj.getIndexSafety(StatePartitionObj.getValues),...
-                        @obj.iterateValueFunction,CurrentAmbiguity,OuterLoopInfo,obj.param);
-                
-                case 'Fishery'
-                    
-                    temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.TypeOfVectorField,...
-                        obj.AmbiguityType,obj.getIndexReachAvoid(StatePartitionObj.getValues),@obj.iterateValueFunction,...
-                        CurrentAmbiguity,OuterLoopInfo,obj.param);
-                    
-                case 'CarPole'
-                    
-                    temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.TypeOfVectorField,...
-                        obj.AmbiguityType,obj.getIndexReachAvoid(StatePartitionObj.getValues),@obj.iterateValueFunction,...
-                        CurrentAmbiguity,OuterLoopInfo,obj.param);
-                    
-                case 'CarPoleNL'
-                    
-                    temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.TypeOfVectorField,...
-                        obj.AmbiguityType,obj.getIndexReachAvoid(StatePartitionObj.getValues),@obj.iterateValueFunction,...
-                        CurrentAmbiguity,OuterLoopInfo,obj.param);
-                    
-                otherwise
-                    NotImplemented();
-            end
-            
-            obj.ValueFunction = temp.ValueFunction;
-            obj.OptInput = temp.OptInput;
-            
-            if isfield(temp,'ValueFunctionConservative')
-                obj.ValueFunctionConservative = temp.ValueFunctionConservative;
-                obj.OptInputConservative = temp.OptInputConservative;
-
-                obj.ValueFunctionQP = temp.ValueFunctionQP;
-                obj.OptInputQP = temp.OptInputQP;
-            end
-            
-        end
-        
-        function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel)
-            
-            StringCurrentState = createXandUString(CurrentState,[]);
-            
-            switch obj.TypeOfVectorField
-                
-                case 'TCL'
-                    indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
-                    
-                    indexSafety = obj.IndexSafeSet;
-                    
-                    if ~indexSafety(indexCurrentState)
-                        out = 0;
-                    else
-                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
-                    end
-                    
-                case 'ChainInt'
-                    
-                    indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
-                    
-                    indexSafety = obj.IndexSafeSet;
-                    
-                    if ~indexSafety(indexCurrentState)
-                        out = 0;
-                    else
-                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
-                    end
-                
-                case 'Fishery'
-                    
-                    indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
-                    
-                    indexReachSet = obj.IndexSafeAndReachSet.reachIndex;
-                    
-                    if indexReachSet(indexCurrentState)
-                        out = 1;
-                    else
-                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
-                    end 
-                    
-                case 'CarPole'
-                    
-                    indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
-                    
-                    indexReachSet = obj.IndexSafeAndReachSet.reachIndex;
-                    
-                    if indexReachSet(indexCurrentState)
-                        out = 1;
-                    else
-                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
-                    end
-                    
-                case 'CarPoleNL'
-                    
-                    indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
-                    
-                    indexReachSet = obj.IndexSafeAndReachSet.reachIndex;
-                    
-                    if indexReachSet(indexCurrentState)
-                        out = 1;
-                    else
-                        out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
-                    end
-                    
-                otherwise
-                    NotImplemented();
-            end
-            
-            
-        end
-        
-        function out = InnerOptimization(obj,x,u,NextValueFunc,StatePartitionObj,TypeOfKernel)
-            
-            % Returns the value function for a given state-action pair (x,u) using the
-            % value function at the next iteration (NextValueFunc).
-            
-            TransitionProb = obj.param.TransitionProb; % vector with the transition probability matrix
-            ListX = obj.param.ListX;
-            
-            if length(NextValueFunc) ~= length(ListX)
-                error('The dimension of the thrid argument is incorrect.') % outputs an error if L is inconsistent with the size of the input Z
-            end
-            
-            
-            StringXU = createXandUString(x,u);
-            
-            if ~TransitionProb.isKey({StringXU}) % outputs an error is there is no element in TransitionProb with the label (stringX,stringU)
-                error('The input-action pair is not a member of the transition probability')
-            end          
-            
-            ObjFunc = NextValueFunc;
-            TransXU = TransitionProb.values({StringXU});
-            
-            switch obj.AmbiguityType
-                case 'NoAmbiguity'
-                    out = TransXU{1}'*ObjFunc; % value function at the current state-action pair
-                case 'MomentAmbiguity'
-                    TempPartition = StatePartitionObj.getValues.Partition;
-                    
-                    %Ambiguity parameters
-                    rhoMu = obj.ParamAmbiguity.rhoMu;
-                    rhoSigma = obj.ParamAmbiguity.rhoSigma;
-                    
-                    [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransXU{1},TempPartition.grid_x,'WithSigma',obj.TypeOfVectorField);
-                    
-                    OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoSigma,rhoMu,SupportSet);
-                    out = AnalyseResults(OptPro,obj.AmbiguityType,[],TypeOfKernel);
-                case 'WassersteinAmbiguity'
-                    CenterBall = TransXU{1};
-                    
-                    %Ambiguity parameters
-                    ep = obj.ParamAmbiguity.ep;
-                    
-                    OptPro = WassersteinAmbiguity(ObjFunc,ep,CenterBall);
-                    
-                    out = AnalyseResults(OptPro,obj.AmbiguityType,[],TypeOfKernel);
-                case 'KernelAmbiguity'
-                    CenterBall = TransXU{1};
-                    gridX = StatePartitionObj.getValues.Partition.grid_x;
-                    
-                    OptPro = KernelBasedAmbiguity(ObjFunc,obj.ParamAmbiguity.ep,CenterBall,@GaussianKernel,obj.ParamAmbiguity.gamma,gridX);
-                    
-                    % Ambiguity parameterrs
-                    OptPro.m = obj.ParamAmbiguity.m;
-                    
-                    OptPro.CurrentState = x;
-                    OptPro.Input = u;  OptPro.param = obj.param;
-                    
-                    out = AnalyseResults(OptPro,obj.AmbiguityType,StatePartitionObj,TypeOfKernel);
-                case 'KLdivAmbiguity'
-                    
-                    %Ambiguity parameters
-                    ep = obj.ParamAmbiguity.ep;
-                    
-                    CenterBall = TransXU{1};
-                    OptPro = KLdivAmbiguity(ObjFunc,ep,CenterBall);
-                    out = AnalyseResults(OptPro,obj.AmbiguityType,[],TypeOfKernel);
-                otherwise
-                    error('This type of ambiguity has not been implemented. Please change the field AmbiguityType to a valid type.');
-            end
-            
-            
-        end
     end
+    
+    methods (Abstract)
+        backward_iteration(obj,state_partition,input_partition)
+
+        iterate_value_function(obj,current_state,current_input,...
+                                next_value_func,state_partition,type_of_kernel)
+
+        inner_optimisation(obj,x,u,next_value_func,state_partition,...
+                            type_of_kernel)
+    end
+   
+        
+%         function obj = getIndexReachAvoid(obj,ObjStatePartition)
+%             
+%             if ~(strcmp(obj.type_vector_field,'Fishery') || strcmp(obj.type_vector_field,'CarPole') || strcmp(obj.type_vector_field,'CarPoleNL') )
+%                 error('This function can only be used for reach avoid specifications. Please check if this is your case.')
+%             end
+%             
+%             % Retuns the indices of the safe and reach sets associated with the partition
+%             
+%             tempStatePartition = ObjStatePartition.Partition;
+%             
+%             switch obj.type_vector_field
+%                 case 'Fishery'
+%                     [obj.index_safe_reach_set.safeIndex,obj.index_safe_reach_set.reachIndex] = GetReachAvoid('3D',tempStatePartition,obj.param);
+%                 case 'CarPole'
+%                     [obj.index_safe_reach_set.safeIndex,obj.index_safe_reach_set.reachIndex] = GetReachAvoid('4D',tempStatePartition,obj.param);
+%                 case 'CarPoleNL'
+%                     [obj.index_safe_reach_set.safeIndex,obj.index_safe_reach_set.reachIndex] = GetReachAvoid('4D',tempStatePartition,obj.param);
+%                 otherwise
+%                     NotImplemented(); 
+%             end           
+%         end
+        
+%         function obj = getIndexSafety(obj,ObjStatePartition)
+%             
+%             if ~(strcmp(obj.type_vector_field,'TCL') || strcmp(obj.type_vector_field,'ChainInt'))
+%                 error('This function can only be used for safety specifications. Please check if this is your case.')
+%             end
+%             
+%             % Retuns the indices of the safe set associated with the partition
+%             
+%             tempStatePartition = ObjStatePartition.Partition;
+%             
+%             
+%             switch obj.type_vector_field
+%                 case 'TCL'
+%                     NumberOfPoints = size(tempStatePartition.X,1);
+%                 case 'ChainInt'
+%                     NumberOfPoints = size(tempStatePartition.grid_x,1);
+%                 otherwise
+%                     NotImplemented();
+%             end
+%             
+%             
+%             % Information about the safe and reach sets
+%             SafeSet = obj.param.SafeSet;
+%             
+%             % Initializing the variables that will store the indices
+%             safeIndex = false(NumberOfPoints,1);
+%             
+%             % Iterating over states
+%             for i = 1:NumberOfPoints
+%                 x = tempStatePartition.grid_x(i);  % current state
+%                 
+%                 % if current state belongs to safe set, then set the
+%                 % corresponding index to true
+%                 if min(SafeSet(1) <= x) && min(x <= SafeSet(2))
+%                     safeIndex(i) = true;
+%                 end
+%             end
+%             
+%             % saving the results
+%             obj.index_safe_set = safeIndex;
+%             
+%         end
+        
+%         function obj = BackwardIteration(obj,StatePartitionObj,InputPartition)
+%             
+%             OuterLoopInfo = obj.param.OuterLoopInfo;
+%             CurrentAmbiguity = obj.ambiguity_type;
+%             
+%             % Testing the value of N
+%             if isempty(obj.time_horizon)
+%                 error('Please, initialize the field N before calling this function');
+%             elseif obj.time_horizon < 0 || ~isinteger(obj.time_horizon)
+%                 error('N must be a positive integer (int8, int16, etc...)');
+%             end
+%             
+%             switch obj.type_vector_field
+%                 
+%                 case 'TCL'
+%                     temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.type_vector_field,...
+%                         obj.ambiguity_type,obj.getIndexSafety(StatePartitionObj.getValues),...
+%                         @obj.iterateValueFunction,CurrentAmbiguity,OuterLoopInfo,obj.param);
+%                     
+%                 case 'ChainInt'
+%                     
+%                     temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.type_vector_field,...
+%                         obj.ambiguity_type,obj.getIndexSafety(StatePartitionObj.getValues),...
+%                         @obj.iterateValueFunction,CurrentAmbiguity,OuterLoopInfo,obj.param);
+%                 
+%                 case 'Fishery'
+%                     
+%                     temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.type_vector_field,...
+%                         obj.ambiguity_type,obj.getIndexReachAvoid(StatePartitionObj.getValues),@obj.iterateValueFunction,...
+%                         CurrentAmbiguity,OuterLoopInfo,obj.param);
+%                     
+%                 case 'CarPole'
+%                     
+%                     temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.type_vector_field,...
+%                         obj.ambiguity_type,obj.getIndexReachAvoid(StatePartitionObj.getValues),@obj.iterateValueFunction,...
+%                         CurrentAmbiguity,OuterLoopInfo,obj.param);
+%                     
+%                 case 'CarPoleNL'
+%                     
+%                     temp = PerformBackIteration(StatePartitionObj,InputPartition,obj.type_vector_field,...
+%                         obj.ambiguity_type,obj.getIndexReachAvoid(StatePartitionObj.getValues),@obj.iterateValueFunction,...
+%                         CurrentAmbiguity,OuterLoopInfo,obj.param);
+%                     
+%                 otherwise
+%                     NotImplemented();
+%             end
+%             
+%             obj.value_function = temp.ValueFunction;
+%             obj.opt_input = temp.OptInput;
+%             
+%             if isfield(temp,'ValueFunctionConservative')
+%                 obj.value_function_conservative = temp.ValueFunctionConservative;
+%                 obj.opt_input_conservative = temp.OptInputConservative;
+% 
+%                 obj.value_function_QP = temp.ValueFunctionQP;
+%                 obj.opt_input_QP = temp.OptInputQP;
+%             end
+%             
+%         end
+        
+%         function out = iterateValueFunction(obj,CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel)
+%             
+%             StringCurrentState = createXandUString(CurrentState,[]);
+%             
+%             switch obj.type_vector_field
+%                 
+%                 case 'TCL'
+%                     indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
+%                     
+%                     indexSafety = obj.index_safe_set;
+%                     
+%                     if ~indexSafety(indexCurrentState)
+%                         out = 0;
+%                     else
+%                         out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
+%                     end
+%                     
+%                 case 'ChainInt'
+%                     
+%                     indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
+%                     
+%                     indexSafety = obj.index_safe_set;
+%                     
+%                     if ~indexSafety(indexCurrentState)
+%                         out = 0;
+%                     else
+%                         out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
+%                     end
+%                 
+%                 case 'Fishery'
+%                     
+%                     indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
+%                     
+%                     indexReachSet = obj.index_safe_reach_set.reachIndex;
+%                     
+%                     if indexReachSet(indexCurrentState)
+%                         out = 1;
+%                     else
+%                         out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
+%                     end 
+%                     
+%                 case 'CarPole'
+%                     
+%                     indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
+%                     
+%                     indexReachSet = obj.index_safe_reach_set.reachIndex;
+%                     
+%                     if indexReachSet(indexCurrentState)
+%                         out = 1;
+%                     else
+%                         out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
+%                     end
+%                     
+%                 case 'CarPoleNL'
+%                     
+%                     indexCurrentState = strcmp(obj.param.ListX,StringCurrentState);
+%                     
+%                     indexReachSet = obj.index_safe_reach_set.reachIndex;
+%                     
+%                     if indexReachSet(indexCurrentState)
+%                         out = 1;
+%                     else
+%                         out = obj.InnerOptimization(CurrentState,Input,NextValueFunc,StatePartitionObj,TypeOfKernel);
+%                     end
+%                     
+%                 otherwise
+%                     NotImplemented();
+%             end
+%             
+%             
+%         end
+        
+%         function out = InnerOptimization(obj,x,u,NextValueFunc,StatePartitionObj,TypeOfKernel)
+%             
+%             % Returns the value function for a given state-action pair (x,u) using the
+%             % value function at the next iteration (NextValueFunc).
+%             
+%             TransitionProb = obj.param.TransitionProb; % vector with the transition probability matrix
+%             ListX = obj.param.ListX;
+%             
+%             if length(NextValueFunc) ~= length(ListX)
+%                 error('The dimension of the thrid argument is incorrect.') % outputs an error if L is inconsistent with the size of the input Z
+%             end
+%             
+%             
+%             StringXU = createXandUString(x,u);
+%             
+%             if ~TransitionProb.isKey({StringXU}) % outputs an error is there is no element in TransitionProb with the label (stringX,stringU)
+%                 error('The input-action pair is not a member of the transition probability')
+%             end          
+%             
+%             ObjFunc = NextValueFunc;
+%             TransXU = TransitionProb.values({StringXU});
+%             
+%             switch obj.ambiguity_type
+%                 case 'NoAmbiguity'
+%                     out = TransXU{1}'*ObjFunc; % value function at the current state-action pair
+%                 case 'MomentAmbiguity'
+%                     TempPartition = StatePartitionObj.getValues.Partition;
+%                     
+%                     %Ambiguity parameters
+%                     rhoMu = obj.param_ambiguity.rhoMu;
+%                     rhoSigma = obj.param_ambiguity.rhoSigma;
+%                     
+%                     [SupportSet,mu,Sigma] = ComputeSupportSetMuSigma(TransXU{1},TempPartition.grid_x,'WithSigma',obj.type_vector_field);
+%                     
+%                     OptPro = MomentBasedAmbiguity(ObjFunc,Sigma,mu,rhoSigma,rhoMu,SupportSet);
+%                     out = AnalyseResults(OptPro,obj.ambiguity_type,[],TypeOfKernel);
+%                 case 'WassersteinAmbiguity'
+%                     CenterBall = TransXU{1};
+%                     
+%                     %Ambiguity parameters
+%                     ep = obj.param_ambiguity.ep;
+%                     
+%                     OptPro = WassersteinAmbiguity(ObjFunc,ep,CenterBall);
+%                     
+%                     out = AnalyseResults(OptPro,obj.ambiguity_type,[],TypeOfKernel);
+%                 case 'KernelAmbiguity'
+%                     CenterBall = TransXU{1};
+%                     gridX = StatePartitionObj.getValues.Partition.grid_x;
+%                     
+%                     OptPro = KernelBasedAmbiguity(ObjFunc,obj.param_ambiguity.ep,CenterBall,@GaussianKernel,obj.param_ambiguity.gamma,gridX);
+%                     
+%                     % Ambiguity parameterrs
+%                     OptPro.m = obj.param_ambiguity.m;
+%                     
+%                     OptPro.CurrentState = x;
+%                     OptPro.Input = u;  OptPro.param = obj.param;
+%                     
+%                     out = AnalyseResults(OptPro,obj.ambiguity_type,StatePartitionObj,TypeOfKernel);
+%                 case 'KLdivAmbiguity'
+%                     
+%                     %Ambiguity parameters
+%                     ep = obj.param_ambiguity.ep;
+%                     
+%                     CenterBall = TransXU{1};
+%                     OptPro = KLdivAmbiguity(ObjFunc,ep,CenterBall);
+%                     out = AnalyseResults(OptPro,obj.ambiguity_type,[],TypeOfKernel);
+%                 otherwise
+%                     error('This type of ambiguity has not been implemented. Please change the field AmbiguityType to a valid type.');
+%             end
+%             
+%             
+%         end
 end
 
 function [safeIndex,reachIndex] = GetReachAvoid(dimensionStateSpace,StatePartition,param)
