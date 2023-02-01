@@ -28,8 +28,8 @@ dimension = size(grid,1);
 
 switch dimension
     case 1
-        ub = grid(:,1);
-        lb = grid(:,2);
+        lb = grid(:,1);
+        ub = grid(:,2);
         h = (ub-lb)/(number_of_points-1);
         
         temp_out = lb:h:ub;
