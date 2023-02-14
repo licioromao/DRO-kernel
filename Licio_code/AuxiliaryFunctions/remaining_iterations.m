@@ -15,9 +15,9 @@ temp_value = 0;
 
 for j = 1:number_of_nested_loops  
     if j~= number_of_nested_loops
-        temp_value = temp_value + prod(indices_and_length(j+1:end,2))*(indices_and_length(j,1)-1)*tail_iterations;
+        temp_value = temp_value + prod(indices_and_length(j+1:end,2))*(indices_and_length(j,1)-1)*double(tail_iterations);
     else
-        temp_value = temp_value + indices_and_length(end,1)*tail_iterations;
+        temp_value = temp_value + indices_and_length(end,1)*double(tail_iterations);
     end
 end
 

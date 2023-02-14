@@ -1,27 +1,22 @@
-classdef MomentTCLValueFunc < TCLValueFunc
+classdef NoAmbiguityTCLValueFunc < TCLValueFunc
     %UNTITLED7 Summary of this class goes here
     %   Detailed explanation goes here
 
     properties
         ambiguity_type % Type of ambiguity set
-        radius_mean % Radius of the mean describing the ambiguity set
-        radius_variance % Radius of the variance describing the ambiguity set
     end
 
     methods
-        function obj = MomentTCLValueFunc(number_of_points,time_horizon,...
-                            type_vector_field,radius_mean,radius_variance,param)
+        function obj = NoAmbiguityTCLValueFunc(number_of_points,time_horizon,...
+                            type_vector_field,param)
             
             obj = obj@TCLValueFunc(number_of_points,time_horizon,type_vector_field,param);
 
-            obj.ambiguity_type = 'MomentAmbiguity';
-
-            obj.radius_mean = radius_mean;
-            obj.radius_variance = radius_variance;
+            obj.ambiguity_type = 'NoAmbiguity';
         end
 
         function out = iterate_value_function(obj,current_state,current_input...
-                                                ,next_value_func,state_partition)
+                                                ,next_value_func)
             
             % This function performs a pass on the partition of the state
             % space and computes the corresponding value function
@@ -37,12 +32,12 @@ classdef MomentTCLValueFunc < TCLValueFunc
                 out = 0; % Safety probability equal to zero if outside the safe set
             else
                 out = obj.inner_optimisation(current_state,current_input,...
-                                            next_value_func,state_partition);
+                                            next_value_func);
             end
         end
         
         function out = inner_optimisation(obj,current_state,current_input,...
-                                                next_value_func,state_partition)
+                                                next_value_func)
             % Returns the value function for a given state-action pair (current_state,current_input) using the
             % value function at the next iteration (next_value_func).
             
@@ -62,27 +57,13 @@ classdef MomentTCLValueFunc < TCLValueFunc
                                                             % label (string_currente_state,string_current_input)
                 error('The input-action pair is not a member of the transition probability')
             end          
-            
+
             objective_cost = next_value_func;
             trans_current_state_input = transition_prob.values({string_state_input});
-            temp_partition = state_partition.get_values.partition;
 
 
-            [support_set_distribution,mean_center,variance_center] = compute_support_set_mean_variance...
-                            (trans_current_state_input{1},temp_partition.grid_x,'WithSigma');
+            out = trans_current_state_input{1}'*objective_cost;
 
-            TCL_moment_obj = MomentBasedAmbiguity(objective_cost,variance_center,mean_center,...
-                            obj.radius_variance,obj.radius_mean,support_set_distribution);
-
-            opt_results= TCL_moment_obj.solve_optimisation;
-
-            if (opt_results.results_optimisation.solver_status.problem == 0) ...
-                    || (opt_results.results_optimisation.solver_status.problem == 4) ...
-                        || (opt_results.results_optimisation.solver_status.problem == -1)
-                out = opt_results.results_optimisation.optimal_obj;
-            else
-                error('There is a problem when solving the optimization problem')
-            end
 
         end
 
@@ -136,7 +117,7 @@ classdef MomentTCLValueFunc < TCLValueFunc
                         current_input = input_partition(u_counter,:)'; 
                         value_func_temp_input(u_counter) = ...
                             obj.iterate_value_function(current_state,...
-                                   current_input,next_value_func,state_partition); % getting the new value for 
+                                   current_input,next_value_func); % getting the new value for 
                                                                                    % the value function
                     end
                     [value_func_temp(j),opt_input_temp(j)] = max(value_func_temp_input);
@@ -150,9 +131,8 @@ classdef MomentTCLValueFunc < TCLValueFunc
 
                 % Printing on the screen
                 temp_int = double(time_horizon-i+1);
-                iterates = remaining_iterations(1,[temp_int,double(time_horizon)],number_of_points*number_of_inputs,[]); % This is the number of iterations 
+                iterates = remaining_iterations(1,[temp_int,time_horizon],number_of_points*number_of_inputs,[]); % This is the number of iterations 
                                                                                                                  % completes so far. The name of the matlab function may be misleading
-                
                 print_inner_loop(total_iterations,iterates,final_time,obj.ambiguity_type,outer_loop_info);
             end
 
@@ -161,33 +141,4 @@ classdef MomentTCLValueFunc < TCLValueFunc
 
         end
     end
-end
-
-
-function [support_set_distribution,mean_center,variance_center] = ...
-    compute_support_set_mean_variance(trans_prob,grid,type)
-
-% This private method is used by inner approximation to compute
-% the center of mean and variance, as well as the support of
-% the distribution.
-
-support_set_distribution = grid';
-mean_center = support_set_distribution*trans_prob;
-
-number_of_points_variance = 1000;
-
-if strcmp(type,'WithSigma')
-    samples = discretesample(trans_prob,number_of_points_variance);
-    sum_sigma = zeros(1,1);
-
-    for i =1:number_of_points_variance
-        x = support_set_distribution(:,samples(i));
-        temp = x - mean_center;
-        sum_sigma = temp*temp' + sum_sigma;
-    end
-
-    variance_center = sum_sigma/number_of_points_variance;
-else
-    variance_center = [];
-end
 end

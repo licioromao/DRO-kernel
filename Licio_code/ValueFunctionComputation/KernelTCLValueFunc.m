@@ -1,23 +1,62 @@
-classdef MomentTCLValueFunc < TCLValueFunc
+classdef KernelTCLValueFunc < TCLValueFunc
     %UNTITLED7 Summary of this class goes here
     %   Detailed explanation goes here
 
-    properties
+    properties   
         ambiguity_type % Type of ambiguity set
-        radius_mean % Radius of the mean describing the ambiguity set
-        radius_variance % Radius of the variance describing the ambiguity set
+        center_ball % Radius of the mean describing the ambiguity set
+        radius_ball % Radius of the variance describing the ambiguity set
+
+        kernel_func
+        kernel_parameter
+
+        type_value_func_computation
+    end
+
+    properties (Access = private)
+        
+        % These parameters are only used for the kernel mean embedding
+        chol_fac 
+        number_of_points_KME
+        regulariser_param
+        eta_param
+        data_KME
+
     end
 
     methods
-        function obj = MomentTCLValueFunc(number_of_points,time_horizon,...
-                            type_vector_field,radius_mean,radius_variance,param)
+        function obj = KernelTCLValueFunc(number_of_points,time_horizon,...
+                            type_vector_field,radius_ball,kernel_func,...
+                                kernel_parameter,type_value_func_computation,param)
             
             obj = obj@TCLValueFunc(number_of_points,time_horizon,type_vector_field,param);
 
-            obj.ambiguity_type = 'MomentAmbiguity';
+            obj.ambiguity_type = 'KernelAmbiguity';
+            
+            obj.type_value_func_computation = type_value_func_computation;
 
-            obj.radius_mean = radius_mean;
-            obj.radius_variance = radius_variance;
+            obj.chol_fac = [];
+            obj.number_of_points_KME = [];
+            obj.regulariser_param = [];
+            obj.eta_param = [];
+            obj.data_KME = [];
+
+            if strcmp(obj.type_value_func_computation,'KME')
+                obj.chol_fac = param.chol_fac;
+                obj.number_of_points_KME = param.number_of_points_KME;
+                obj.regulariser_param = param.regulariser_param;
+                obj.eta_param = param.eta_param;
+                obj.kernel_func = param.kernel_func;
+                obj.kernel_parameter = param.kernel_parameter;
+                obj.data_KME = param.data_KME;
+            else
+                obj.kernel_func = kernel_func;
+                obj.kernel_parameter = kernel_parameter;
+            end
+
+            obj.center_ball = [];
+            obj.radius_ball = radius_ball;
+            
         end
 
         function out = iterate_value_function(obj,current_state,current_input...
@@ -45,6 +84,12 @@ classdef MomentTCLValueFunc < TCLValueFunc
                                                 next_value_func,state_partition)
             % Returns the value function for a given state-action pair (current_state,current_input) using the
             % value function at the next iteration (next_value_func).
+
+            if isempty(obj.type_value_func_computation)
+                error(['This function can only be used after initialising ' ...
+                    'the field type_value_func_computation to one of these values:' ...
+                        '   1. Conservative \n 2. Matrix \n 3. QP \n 4. KME'])
+            end
             
             transition_prob = obj.param.transition_prob; % vector with the transition probability matrix
             grid_no_inputs = obj.param.grid_no_inputs;
@@ -65,29 +110,59 @@ classdef MomentTCLValueFunc < TCLValueFunc
             
             objective_cost = next_value_func;
             trans_current_state_input = transition_prob.values({string_state_input});
-            temp_partition = state_partition.get_values.partition;
 
+            obj.center_ball = trans_current_state_input{1};
+            grid_x = state_partition.partition.grid_x;
 
-            [support_set_distribution,mean_center,variance_center] = compute_support_set_mean_variance...
-                            (trans_current_state_input{1},temp_partition.grid_x,'WithSigma');
-
-            TCL_moment_obj = MomentBasedAmbiguity(objective_cost,variance_center,mean_center,...
-                            obj.radius_variance,obj.radius_mean,support_set_distribution);
-
-            opt_results= TCL_moment_obj.solve_optimisation;
-
-            if (opt_results.results_optimisation.solver_status.problem == 0) ...
-                    || (opt_results.results_optimisation.solver_status.problem == 4) ...
-                        || (opt_results.results_optimisation.solver_status.problem == -1)
-                out = opt_results.results_optimisation.optimal_obj;
+            if strcmp(obj.type_value_func_computation,'KME')
+               TCL_kernel_obj = KernelBasedAmbiguity(objective_cost,obj.radius_ball,...
+                                                    obj.center_ball,obj.kernel_func,...
+                                                         obj.kernel_parameter,grid_x,...
+                                                            obj.type_value_func_computation,...
+                                                               obj.chol_fac);
             else
-                error('There is a problem when solving the optimization problem')
+                TCL_kernel_obj = KernelBasedAmbiguity(objective_cost,obj.radius_ball,...
+                                                    obj.center_ball,obj.kernel_func,...
+                                                         obj.kernel_parameter,grid_x,...
+                                                            obj.type_value_func_computation,...
+                                                            []);
             end
 
+            
+
+            % Ambiguity parameterrs
+            TCL_kernel_obj.number_of_samples = obj.param.outer_loop_info.string_ambiguity{1}.number_of_samples;
+
+            TCL_kernel_obj.current_state = current_state;
+            TCL_kernel_obj.current_input = current_input; 
+            
+            switch obj.type_value_func_computation
+                case 'Conservative'
+                    TCL_kernel_obj = TCL_kernel_obj.solve_optimisation_conservative(state_partition);
+                    out = TCL_kernel_obj.results_optimisation.opt_obj;
+                case 'Matrix'
+                    TCL_kernel_obj = TCL_kernel_obj.solve_optimisation(state_partition);
+                    out = TCL_kernel_obj.results_optimisation.opt_obj;
+                case 'QP'
+                    TCL_kernel_obj = TCL_kernel_obj.solve_optimisation_QP(state_partition);
+                    out = TCL_kernel_obj.results_optimisation.opt_obj;
+                case 'KME'
+                    TCL_kernel_obj = TCL_kernel_obj.solve_optimisation_KME(state_partition,obj.data_KME);
+                    out = TCL_kernel_obj.results_optimisation.opt_obj;
+                otherwise
+                    not_implemented();
+            end
+   
         end
 
         function obj = backward_iteration(obj,state_partition,input_partition,...
                                             outer_loop_info)
+            
+            if isempty(obj.type_value_func_computation)
+                error(['This function can only be used after initialising ' ...
+                    'the field type_value_func_computation to one of these values:' ...
+                        '   1. Conservative \n 2. Matrix \n 3. QP \n 4. KME'])
+            end
 
 
             % Testing the value of N
@@ -151,43 +226,20 @@ classdef MomentTCLValueFunc < TCLValueFunc
                 % Printing on the screen
                 temp_int = double(time_horizon-i+1);
                 iterates = remaining_iterations(1,[temp_int,double(time_horizon)],number_of_points*number_of_inputs,[]); % This is the number of iterations 
-                                                                                                                 % completes so far. The name of the matlab function may be misleading
+                                                                                                                 % completes so far. The name of the matlab 
+                                                                                                                 % function may be misleading
                 
+%                 iterates
+%                 total_iterations
+%                 temp_int
+%                 final_time
                 print_inner_loop(total_iterations,iterates,final_time,obj.ambiguity_type,outer_loop_info);
             end
-
+            
+            
             obj.value_function = value_function;
-            obj.opt_input= opt_input;
+            obj.opt_input = opt_input;
 
         end
     end
-end
-
-
-function [support_set_distribution,mean_center,variance_center] = ...
-    compute_support_set_mean_variance(trans_prob,grid,type)
-
-% This private method is used by inner approximation to compute
-% the center of mean and variance, as well as the support of
-% the distribution.
-
-support_set_distribution = grid';
-mean_center = support_set_distribution*trans_prob;
-
-number_of_points_variance = 1000;
-
-if strcmp(type,'WithSigma')
-    samples = discretesample(trans_prob,number_of_points_variance);
-    sum_sigma = zeros(1,1);
-
-    for i =1:number_of_points_variance
-        x = support_set_distribution(:,samples(i));
-        temp = x - mean_center;
-        sum_sigma = temp*temp' + sum_sigma;
-    end
-
-    variance_center = sum_sigma/number_of_points_variance;
-else
-    variance_center = [];
-end
 end

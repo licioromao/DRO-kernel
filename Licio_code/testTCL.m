@@ -15,19 +15,24 @@ struct_KL_div_ambiguity.name = [];
 time_horizon = int16(9);
 
 % Number of points between 18 and 24 degree 
-number_of_points = 80;
+number_of_points = 150;
 number_of_MC_simulation = 1000; % Set this to be a vector if want to run 
                               % the test with different value for this
                               % parameter
+                              
+number_of_samples = 200; % This is the number of samples for the kernel 
+                         % ambiguity set. It may different from the number
+                         % of samples used to estimate the transition
+                         % probability
 
-radius_ambiguity = []; % Define the radius of distance-based ambiguity sets.
+radius_ball = 0.1; % Define the radius of distance-based ambiguity sets.
                        % If this is a vector, it will run several
                        % simulations, one for each entry of the vector.
 
 % The next two lines define values for the moment ambiguity set. If any of
 % these are a vector, different simulations (once for each entry) are run.
-radius_mean = 0.8;
-radius_variance = 3.5;
+radius_mean = [];
+radius_variance = [];
 
 if ~isempty(number_of_MC_simulation)
     number_of_sumulations_TCL = size(number_of_MC_simulation,2);
@@ -38,8 +43,8 @@ else
 end
 
 
-if ~isempty(radius_ambiguity)
-    number_of_radius_distance = size(radius_ambiguity,2);
+if ~isempty(radius_ball)
+    number_of_radius_distance = size(radius_ball,2);
     total_iterations = total_iterations*number_of_radius_distance;
 else
     number_of_radius_distance = 0;
@@ -63,9 +68,9 @@ end
 
 % In addition to not passing as parameter in the function below, you should
 % also comment here to ommit any ambiguity set
-%struct_no_ambiguity.name = 'NoAmbiguity';
-%struct_kernel_ambiguity.name = 'KernelAmbiguity';
-%struct_kernel_ambiguity.gamma = 10;
+struct_no_ambiguity.name = 'NoAmbiguity';
+struct_kernel_ambiguity.name = 'KernelAmbiguity';
+struct_kernel_ambiguity.kernel_parameter = 20;
 struct_moment_ambiguity.name = 'MomentAmbiguity';
 %struct_KL_div_ambiguity.name = 'KLdivAmbiguity';
 
@@ -88,19 +93,19 @@ for i1=1:number_of_sumulations_TCL
 
     outer_loop_info.current_iteration = index;
 
-%     results_TCL = TCL(time_horizon,{struct_no_ambiguity},...
-%                         outer_loop_info,param); % Solve the DP iteration without ambiguity set
-% 
-%     TCL_results_path = [TCL_results_path;results_TCL];
-%     
+    results_TCL = TCL(time_horizon,{struct_no_ambiguity},...
+                        outer_loop_info,param); % Solve the DP iteration without ambiguity set
+
+    TCL_results_path = [TCL_results_path;results_TCL];
+    
     % If there exists distance-based ambiguity sets
-    if ~isempty(radius_ambiguity)
-        struct_kernel_ambiguity.m = number_of_MC_simulation(i1);
+    if ~isempty(radius_ball)
+        struct_kernel_ambiguity.number_of_samples = number_of_samples;
 
         for i2=1:number_of_radius_distance
             % Parameters of the kernel ambiguity set
             initial_time_per_iteration = tic;
-            struct_kernel_ambiguity.radius_ambiguity = radius_ambiguity(i2);
+            struct_kernel_ambiguity.radius_ball = radius_ball(i2);
             index = remaining_iterations(2,[[i1;i2],...
                                 [number_of_sumulations_TCL;number_of_radius_distance]]...
                                 ,number_of_simulations_mean_moment...
