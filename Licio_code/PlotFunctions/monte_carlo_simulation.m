@@ -1,20 +1,20 @@
-function out = MonteCarloSimulation(PathToFile,TypeOfVectorField,MC)
+function out = monte_carlo_simulation(path_to_file,type_vector_field,number_MC_simulations)
 
 % This function collects all the data and plot the corresponding value
 % function
 
-switch TypeOfVectorField % checking the type of ambiguity
+switch type_vector_field % checking the type of ambiguity
     case 'TCL'
-        index = strfind(PathToFile(1).FullPath,'TCL');
+        index = strfind(path_to_file(1).FullPath,'TCL');
         if isempty(index)
             error('The path you provided does not TCL data'); % error if TCL is not present in the path
         end
         
         ValueFunc = [];
         StructAmbiguityTypes = [];
-        for i = 1:length(PathToFile)
-            ValueFunc{i} = load(PathToFile(i).FullPath,'-regexp','ValueFunc*');
-            StructAmbiguityTypes{i} = load(PathToFile(i).FullPath,'StructAmbiguityTypes');
+        for i = 1:length(path_to_file)
+            ValueFunc{i} = load(path_to_file(i).FullPath,'-regexp','ValueFunc*');
+            StructAmbiguityTypes{i} = load(path_to_file(i).FullPath,'StructAmbiguityTypes');
         end
         
         L = length(ValueFunc);
@@ -42,14 +42,14 @@ switch TypeOfVectorField % checking the type of ambiguity
             end
         end
         
-        load(PathToFile(1).FullPath,'param')
+        load(path_to_file(1).FullPath,'param')
         
         m = param.MC;
         PartitionSize = param.NumberOfPartitions;
         
-        Partition = load(PathToFile(1).FullPath,'Grid');
-        load(PathToFile(1).FullPath,'TimeHorizon');
-        load(PathToFile(1).FullPath,'param');
+        Partition = load(path_to_file(1).FullPath,'Grid');
+        load(path_to_file(1).FullPath,'TimeHorizon');
+        load(path_to_file(1).FullPath,'param');
         
         Partition = Partition.Grid;
         grid_x = Partition.getValues.Partition.grid_x;
@@ -85,11 +85,11 @@ switch TypeOfVectorField % checking the type of ambiguity
                         [Safety(k1),Safety_2(k1),Safety_3(k1)] = ...
                             ComputeEmpiricalProb(x0,Partition,Inputs{index},InputsConservative{index},InputsQP{index}...
                             ,TimeHorizon,InfoValueFunc{index}.Name, ...
-                            'TCL',MC,param);
+                            'TCL',number_MC_simulations,param);
                     else
                         [Safety(k1),~,~] = ...
                             ComputeEmpiricalProb(x0,Partition,Inputs{index},[],[],TimeHorizon,InfoValueFunc{index}.Name, ...
-                            'TCL',MC,param);
+                            'TCL',number_MC_simulations,param);
                     end
                 end
 

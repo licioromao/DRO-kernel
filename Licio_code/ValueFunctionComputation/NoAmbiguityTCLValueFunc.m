@@ -102,7 +102,8 @@ classdef NoAmbiguityTCLValueFunc < TCLValueFunc
 
             for i = time_horizon:-1:1
                 next_value_func = value_function(:,i+1); % saving in a temporary variable the 
-                                                       % value function of the next step
+                                                       % value function of the next step                                       
+                                                    
                 value_func_temp = zeros(number_of_points,1);
                 opt_input_temp = zeros(number_of_points,1);
 

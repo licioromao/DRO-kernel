@@ -52,7 +52,7 @@ for i = 1:number_of_ambiguity_sets
             param.number_of_points_KME = [];
             param.kernel_func = [];
 
-            % Conservative computation of the kernel
+%             % Conservative computation of the kernel
 %             time_kernel_based = tic;
 %             struct_ambiguity_types{i}.type_value_func_computation = 'Conservative';
 % 
@@ -62,8 +62,8 @@ for i = 1:number_of_ambiguity_sets
 % 
 %             value_func_kernel_conservative.time = toc(time_kernel_based);
 
-            % Our second idea to compute the value function under kernel
-            % ambiguity
+%             % Our second idea to compute the value function under kernel
+%             % ambiguity
 % 
 %             time_kernel_based = tic;
 %             struct_ambiguity_types{i}.type_value_func_computation = 'QP';
@@ -74,10 +74,10 @@ for i = 1:number_of_ambiguity_sets
 % 
 %             value_func_kernel_QP.time = toc(time_kernel_based);
 %              
-              
-              % The computation below solves a regression problem for the
-              % kernel
-
+%               
+%               % The computation below solves a regression problem for the
+%               % kernel
+% 
 %             time_kernel_based = tic;
 %             struct_ambiguity_types{i}.type_value_func_computation = 'Matrix';
 % 
@@ -90,19 +90,20 @@ for i = 1:number_of_ambiguity_sets
             % Our last attempt using the kernel mean embedding
 
             time_kernel_based = tic;
+            
+            number_of_samples_KME = struct_ambiguity_types{i}.number_of_samples_KME;
+            
             struct_ambiguity_types{i}.type_value_func_computation = 'KME';
-
-            number_of_points_KME = struct_ambiguity_types{i}.number_of_samples;
-            param.regulariser_param = 0.8;
-            param.eta_param = 1;
+            param.regulariser_param = struct_ambiguity_types{i}.regulariser_param;
+            param.eta_param = struct_ambiguity_types{i}.eta_param;
             param.kernel_parameter = struct_ambiguity_types{i}.kernel_parameter;
 
             [chol_fac,kernel_func,data_KME] = TCL_get_data_KME(state_partition,input_partition,...
-                                    number_of_points_KME,param);
+                                    number_of_samples_KME,param);
             
            
             param.chol_fac = chol_fac;
-            param.number_of_points_KME = number_of_points_KME;
+            param.number_of_samples_KME = number_of_samples_KME;
             param.kernel_func = kernel_func;
             param.data_KME = data_KME;
 

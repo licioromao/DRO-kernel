@@ -6,26 +6,29 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
     properties
         param % This variable must be made global at some point
         
-        number_of_samples
+        number_of_samples_KME
+        norm_value_func_RHKS
         
         current_state
         current_input
         
         kernel_function % This parameter is a handle to a function that defined the Kernel on the state space
         kernel_parameter
+        eta_param
         chol_factorization
     end
     
     methods
         function obj = KernelBasedAmbiguity(objective_cost,radius_ball, ... 
-                        center_ball,kernel_function,kernel_parameter,grid_x,...
-                            type_value_func_computation,chol_fac)
+                        center_ball,kernel_function,kernel_parameter,eta_param...
+                                ,grid_x,type_value_func_computation,chol_fac,norm_value_func_RHKS)
+                            
 
             obj = obj@DistanceBasedAmbiguity(objective_cost,radius_ball,center_ball); % Calling the connstructor of the parent class
                 
             obj.param = []; % This should be made a global variable at some point
             
-            obj.number_of_samples = [];
+            obj.number_of_samples_KME = [];
            
             obj.current_state = [];
             obj.current_input = [];
@@ -33,6 +36,8 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             % Assigning the kernel parameters to the object
             obj.kernel_parameter = kernel_parameter;
             obj.kernel_function = kernel_function;
+            obj.eta_param = eta_param;
+            obj.norm_value_func_RHKS = norm_value_func_RHKS;
 
             if strcmp(type_value_func_computation,'KME')
                 obj.chol_factorization = chol_fac;
@@ -50,7 +55,7 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             % CODE. THE NUMERICAL RESULTS WITH THIS DOES NOT LOOK
             % PROMISSING. 
 
-            if isempty(obj.kernel_parameter) || isempty(obj.number_of_samples) ... 
+            if isempty(obj.kernel_parameter) || isempty(obj.number_of_samples_KME) ... 
                       || isempty(obj.current_state) || isempty(obj.current_input)
                 error(['You must first initialize the kernel_parameter and number_of_data ' ...
                     'fiels of the object, as well as current_state and current_input ' ...
@@ -73,7 +78,7 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             % WE MAY WANT TO DELETE THIS FUNCTION AT A LATER VERSION OF THE
             % CODE. THE NUMERICAL RESULTS WITH THIS DOES NOT LOOK
             % PROMISSING. 
-            if isempty(obj.kernel_parameter) || isempty(obj.number_of_samples) ...
+            if isempty(obj.kernel_parameter) || isempty(obj.number_of_samples_KME) ...
                   || isempty(obj.current_state) || isempty(obj.current_input)
                 error(['You must first initialize the kernel_parameter and ' ...
                     'number_of_data fiels of the object, as well as ' ...
@@ -98,7 +103,7 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             % CODE. THE NUMERICAL RESULTS WITH THIS DOES NOT LOOK
             % PROMISSING. 
 
-            if isempty(obj.kernel_parameter) || isempty(obj.number_of_samples) ...
+            if isempty(obj.kernel_parameter) || isempty(obj.number_of_samples_KME) ...
                     || isempty(obj.current_state) || isempty(obj.current_input)
                 error(['You must first initialize the kernel_parameter and number_of_data fiels of ' ...
                     'the object, as well as current_state and current_input using ' ...
@@ -152,18 +157,16 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
             temp = (obj.chol_factorization)\(obj.chol_factorization'...
                                         *obj.kernel_function(obj.current_state,obj.current_input));
             
-            temp = temp/(abs(temp)); % I AM NOT SURE ABOUT THIS
-            temp = temp/sum(temp); % I AM NOT SURE ABOUT THIS
+            %temp = temp/(abs(temp)); % I AM NOT SURE ABOUT THIS
+            temp = abs(temp)/sum(temp); % I AM NOT SURE ABOUT THIS
 
-            norm_RKHS_mod_objective = mod_objective_cost'*obj.chol_factorization'...
-                                        *obj.chol_factorization*mod_objective_cost; % I AM NOT SURE ABOUT THIS
+            %norm_RKHS_mod_objective = sqrt(mod_objective_cost'*obj.chol_factorization'...
+                                        %*obj.chol_factorization*mod_objective_cost)...
+                                        %/norm(obj.chol_factorization'*obj.chol_factorization); % I AM NOT SURE ABOUT THIS
 
-            
-            norm_RKHS_mod_objective = sqrt(norm_RKHS_mod_objective)/norm(obj.chol_factorization'...
-                                        *obj.chol_factorization); % I AM NOT SURE ABOUT THIS
 
-            obj.results_optimisation.opt_obj = max(0,min(1,mod_objective_cost'*temp ...
-                                                    - obj.radius_ball*norm_RKHS_mod_objective));
+            obj.results_optimisation.opt_obj = max(0,min(1,obj.eta_param*mod_objective_cost'*temp ...
+                                                    - obj.radius_ball*obj.norm_value_func_RHKS));
             
         end
     end
@@ -175,7 +178,7 @@ function mod_objective_cost = modify_obj_func(objective_cost,state_partition,dat
     number_of_points_KME = size(data_KME,1);
     mod_objective_cost = zeros(number_of_points_KME,1);
 
-    grid_points_KME = data_KME(:,1);
+    grid_points_KME = data_KME(:,3);
 
     for i=1:number_of_points_KME
         index_of_point = state_partition.get_element_partition(grid_points_KME(i)).index;

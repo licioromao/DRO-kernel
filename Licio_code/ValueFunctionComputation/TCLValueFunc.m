@@ -3,7 +3,7 @@ classdef TCLValueFunc < ComputeValueFunction
     properties
         type_vector_field % This value stores the type of Vector field
         param % structure with all the parameters of the problem
-        index_safe_set 
+        index_safe_set
     end
 
     methods

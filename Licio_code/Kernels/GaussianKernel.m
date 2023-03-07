@@ -32,7 +32,7 @@ switch mode
             end
         end
         
-        out = chol(A + 0.01*eye(L));
+        out = chol(A + alpha*eye(L));
     case 'KME'
         number_of_points = size(x,1);
         

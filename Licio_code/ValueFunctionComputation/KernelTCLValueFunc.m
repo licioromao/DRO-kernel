@@ -17,7 +17,11 @@ classdef KernelTCLValueFunc < TCLValueFunc
         
         % These parameters are only used for the kernel mean embedding
         chol_fac 
+        
         number_of_points_KME
+        points_to_estimate_RHKS_norm
+        chol_gram_matrix_RKHS_norm
+
         regulariser_param
         eta_param
         data_KME
@@ -40,6 +44,7 @@ classdef KernelTCLValueFunc < TCLValueFunc
             obj.regulariser_param = [];
             obj.eta_param = [];
             obj.data_KME = [];
+            obj.points_to_estimate_RHKS_norm = [];
 
             if strcmp(obj.type_value_func_computation,'KME')
                 obj.chol_fac = param.chol_fac;
@@ -49,6 +54,12 @@ classdef KernelTCLValueFunc < TCLValueFunc
                 obj.kernel_func = param.kernel_func;
                 obj.kernel_parameter = param.kernel_parameter;
                 obj.data_KME = param.data_KME;
+
+                obj.points_to_estimate_RHKS_norm = linspace(obj.param.safe_set(1),obj.param.safe_set(2),number_of_points)';
+                obj.chol_gram_matrix_RKHS_norm = GaussianKernel(obj.points_to_estimate_RHKS_norm',...
+                                                    obj.points_to_estimate_RHKS_norm',obj.kernel_parameter,...
+                                                    obj.regulariser_param,'MatrixFac',[]);
+
             else
                 obj.kernel_func = kernel_func;
                 obj.kernel_parameter = kernel_parameter;
@@ -60,7 +71,7 @@ classdef KernelTCLValueFunc < TCLValueFunc
         end
 
         function out = iterate_value_function(obj,current_state,current_input...
-                                                ,next_value_func,state_partition)
+                                                ,next_value_func,state_partition,norm_value_func_RHKS)
             
             % This function performs a pass on the partition of the state
             % space and computes the corresponding value function
@@ -76,12 +87,12 @@ classdef KernelTCLValueFunc < TCLValueFunc
                 out = 0; % Safety probability equal to zero if outside the safe set
             else
                 out = obj.inner_optimisation(current_state,current_input,...
-                                            next_value_func,state_partition);
+                                            next_value_func,state_partition,norm_value_func_RHKS);
             end
         end
         
         function out = inner_optimisation(obj,current_state,current_input,...
-                                                next_value_func,state_partition)
+                                                next_value_func,state_partition,norm_value_func_RHKS)
             % Returns the value function for a given state-action pair (current_state,current_input) using the
             % value function at the next iteration (next_value_func).
 
@@ -117,21 +128,21 @@ classdef KernelTCLValueFunc < TCLValueFunc
             if strcmp(obj.type_value_func_computation,'KME')
                TCL_kernel_obj = KernelBasedAmbiguity(objective_cost,obj.radius_ball,...
                                                     obj.center_ball,obj.kernel_func,...
-                                                         obj.kernel_parameter,grid_x,...
+                                                         obj.kernel_parameter,obj.param.eta_param,grid_x,...
                                                             obj.type_value_func_computation,...
-                                                               obj.chol_fac);
+                                                               obj.chol_fac,norm_value_func_RHKS);
             else
                 TCL_kernel_obj = KernelBasedAmbiguity(objective_cost,obj.radius_ball,...
                                                     obj.center_ball,obj.kernel_func,...
                                                          obj.kernel_parameter,grid_x,...
                                                             obj.type_value_func_computation,...
-                                                            []);
+                                                            [],[]);
             end
 
             
 
-            % Ambiguity parameterrs
-            TCL_kernel_obj.number_of_samples = obj.param.outer_loop_info.string_ambiguity{1}.number_of_samples;
+            % Ambiguity parameters
+            TCL_kernel_obj.number_of_samples_KME = obj.param.outer_loop_info.string_ambiguity{1}.number_of_samples_KME;
 
             TCL_kernel_obj.current_state = current_state;
             TCL_kernel_obj.current_input = current_input; 
@@ -197,6 +208,9 @@ classdef KernelTCLValueFunc < TCLValueFunc
             for i = time_horizon:-1:1
                 next_value_func = value_function(:,i+1); % saving in a temporary variable the 
                                                        % value function of the next step
+
+                norm_value_func_RHKS = compute_norm_RKHS(next_value_func,obj.chol_gram_matrix_RKHS_norm);
+
                 value_func_temp = zeros(number_of_points,1);
                 opt_input_temp = zeros(number_of_points,1);
 
@@ -211,7 +225,7 @@ classdef KernelTCLValueFunc < TCLValueFunc
                         current_input = input_partition(u_counter,:)'; 
                         value_func_temp_input(u_counter) = ...
                             obj.iterate_value_function(current_state,...
-                                   current_input,next_value_func,state_partition); % getting the new value for 
+                                   current_input,next_value_func,state_partition,norm_value_func_RHKS); % getting the new value for 
                                                                                    % the value function
                     end
                     [value_func_temp(j),opt_input_temp(j)] = max(value_func_temp_input);
@@ -228,11 +242,7 @@ classdef KernelTCLValueFunc < TCLValueFunc
                 iterates = remaining_iterations(1,[temp_int,double(time_horizon)],number_of_points*number_of_inputs,[]); % This is the number of iterations 
                                                                                                                  % completes so far. The name of the matlab 
                                                                                                                  % function may be misleading
-                
-%                 iterates
-%                 total_iterations
-%                 temp_int
-%                 final_time
+
                 print_inner_loop(total_iterations,iterates,final_time,obj.ambiguity_type,outer_loop_info);
             end
             
@@ -242,4 +252,12 @@ classdef KernelTCLValueFunc < TCLValueFunc
 
         end
     end
+end
+
+function norm_RKHS = compute_norm_RKHS(value_function,chol_factorization)
+
+beta = chol_factorization\(chol_factorization'\value_function);
+norm_RKHS = sqrt(beta'*chol_factorization'*chol_factorization*beta);
+
+
 end
