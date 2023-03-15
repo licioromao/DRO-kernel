@@ -49,7 +49,7 @@ switch dimension
         for i1 = 1:number_of_points(1)
             for i2 = 1:number_of_points(2)
                 x = [X1(i2,i1);X2(i2,i1)];
-                index = remaining_iterations(2,[[i1;i2],number_of_points]...
+                index = remaining_iterations(2,[[i1;i2],[number_of_points(1);number_of_points(2)]]...
                                ,1,[]); % Finds the number of remaining iterations
                 grid_x(index,:) = x;
             end

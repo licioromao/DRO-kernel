@@ -58,6 +58,34 @@ switch type_vector_field
 
         % Generating the transition probability
         param.transition_prob = transition_prob;
+    
+    case 'LTI'
+        param.A = [1,0;1,1]; param.B = [1;1];
+
+        param.grid = [-30,30;-20,20];
+        param.safe_set = [-10,10;-10,10];
+        param.number_of_points = number_of_points;
+
+        covaraiance_state_noise = randn(2,1);
+        param.mean_noise= [0;0]; covaraiance_state_noise = covaraiance_state_noise*covaraiance_state_noise' + 0.1*eye(2);
+        param.chol_cov = chol(covaraiance_state_noise)';
+
+        state_partition = TwoDimStatePartition(param.grid,param.number_of_points,param.safe_set,'LTI');
+        input_partition = linspace(-5,5,20)';
+
+        [grid_with_inputs,grid_no_inputs] = state_partition.create_list(input_partition); % List containing labels for the discrete states of the discretazation
+
+        param.grid_with_inputs = grid_with_inputs;
+        param.grid_no_inputs = grid_no_inputs;
+        param.size_partition = state_partition.get_size_partition();
+
+        param.number_of_MC_simulations = number_of_MC_simulations;
+
+        transition_prob = estimate_transition(state_partition,input_partition,param); 
+
+        % Generating the transition probability
+        param.transition_prob = transition_prob;
+
 
     otherwise
         NotImplemented();

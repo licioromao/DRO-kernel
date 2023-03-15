@@ -14,34 +14,39 @@ function out = estimate_transition(obj_state_partition,input_partition,param)
 
 type_vector_field = obj_state_partition.type_vector_field;
 
-[grid_no_inputs,~] = obj_state_partition.create_list(input_partition);
+grid_with_inputs = param.grid_with_inputs;
 
 switch type_vector_field
     
     case 'TCL'
         
         out = estimate_prob_transition(obj_state_partition,input_partition,...
-                                        grid_no_inputs,'1D',type_vector_field,param);
-        
-    case 'ChainInt'
-        
+                                        grid_with_inputs,'1D',type_vector_field,param);
+
+    case 'LTI'
+
         out = estimate_prob_transition(obj_state_partition,input_partition,...
-                                        grid_no_inputs,'2D',type_vector_field,param);
-    
-    case 'Fishery'
+                                        grid_with_inputs,'2D',type_vector_field,param);
         
-        out = estimate_prob_transition(obj_state_partition,input_partition,...
-                                        grid_no_inputs,'3D',type_vector_field,param);
-    
-    case 'CarPole'
-        
-        out = estimate_prob_transition(obj_state_partition,input_partition,...
-                                        grid_no_inputs,'4D',type_vector_field,param);
-        
-    case 'CarPoleNL'
-        
-        out = estimate_prob_transition(obj_state_partition,input_partition,...  
-                                        grid_no_inputs,'4D',type_vector_field,param);
+%     case 'ChainInt'
+%         
+%         out = estimate_prob_transition(obj_state_partition,input_partition,...
+%                                         grid_no_inputs,'2D',type_vector_field,param);
+%     
+%     case 'Fishery'
+%         
+%         out = estimate_prob_transition(obj_state_partition,input_partition,...
+%                                         grid_no_inputs,'3D',type_vector_field,param);
+%     
+%     case 'CarPole'
+%         
+%         out = estimate_prob_transition(obj_state_partition,input_partition,...
+%                                         grid_no_inputs,'4D',type_vector_field,param);
+%         
+%     case 'CarPoleNL'
+%         
+%         out = estimate_prob_transition(obj_state_partition,input_partition,...  
+%                                         grid_no_inputs,'4D',type_vector_field,param);
         
     otherwise
         not_implemented();
@@ -53,7 +58,7 @@ end
 % Computing the transition probabilities
 
 function out = estimate_prob_transition(obj_state_partition,input_partition,...
-                                           grid_no_inputs,dim_space,type_vector_field,param)
+                                           grid_with_inputs,dim_space,type_vector_field,param)
     
     number_parallel_cores = 12; % Adjust this parameter based on your PC.
                                 % Used only for parallel computations.
@@ -173,14 +178,14 @@ function out = estimate_prob_transition(obj_state_partition,input_partition,...
             
             number_of_inputs = length(input_partition); % Number of possible inputs
             
-            number_of_MC_simulations = param.MC; % Number of Monte Carlo simulation for each transition
+            number_of_MC_simulations = param.number_of_MC_simulations; % Number of Monte Carlo simulation for each transition
             
             number_of_points = Nx1*Nx2;
             temp_values = cell(Nx1*Nx2*number_of_inputs,1);
             
             total_iterations = Nx1*Nx2*number_of_inputs; % total number of 
                                                          % remaining iterations
-            PrintEstimateTransitionProb(total_iterations,0,0);
+            print_estimate_transition_prob(total_iterations,0,0);
             
             % Variable to estimate the amount of remaining time
             sum_time = 0;
@@ -197,16 +202,16 @@ function out = estimate_prob_transition(obj_state_partition,input_partition,...
                         % Iterate over all possible input combination
                         tempTime = tic;
                         temp_prob = zeros(number_of_points,number_of_inputs);
-                        parfor j =1:number_of_inputs
+                        for j =1:number_of_inputs % THIS SHOULD BE PARFOR
                             u = input_partition(j,:); % selecting a particular 
                                                       % allowable input
-                            prob_xu = RunMonteCarlo(x,u,obj_state_partition,...
+                            prob_xu = run_monte_carlo(x,u,obj_state_partition,...
                                    type_vector_field,param); % empirical estimate 
                                                              % of the transition probability
                             temp_prob(:,j) = prob_xu;
                         end
                         
-                        index = RemainingIterations(2,[[i1;i2],[Nx1;Nx2]],...
+                        index = remaining_iterations(2,[[i1;i2],[Nx1;Nx2]],...
                                                            number_of_inputs,[]);
                         
                         for j=number_of_inputs-1:-1:0
@@ -220,13 +225,13 @@ function out = estimate_prob_transition(obj_state_partition,input_partition,...
                         % Printing results on the screen
                         if (number_of_points-1)/number_of_inputs < 100
                             if mod(i1+i2,5) == 0
-                                PrintEstimateTransitionProb(total_iterations,index,sum_time/sum_it);
+                                print_estimate_transition_prob(total_iterations,index,sum_time/sum_it);
                                 sum_time = 0;
                                 sum_it = 0;
                             end
                         else
                             if mod(i1+i2,15) == 0
-                                PrintEstimateTransitionProb(total_iterations,index,sum_time/sum_it);
+                                print_estimate_transition_prob(total_iterations,index,sum_time/sum_it);
                                 sum_time = 0;
                                 sum_it = 0;
                             end
@@ -242,9 +247,9 @@ function out = estimate_prob_transition(obj_state_partition,input_partition,...
                             
                             tempTime1 = tic;
                             
-                            prob_xu = RunMonteCarloParallel(x,u,obj_state_partition,type_vector_field,12,param); % empirical estimate of the transition probability using parallel computation
+                            prob_xu = run_monte_carlo_parallel(x,u,obj_state_partition,type_vector_field,12,param); % empirical estimate of the transition probability using parallel computation
                             
-                            index = RemainingIterations(3,[[i1;i2;j],[Nx1;Nx2;number_of_inputs]],1,[]);
+                            index = remaining_iterations(3,[[i1;i2;j],[Nx1;Nx2;number_of_inputs]],1,[]);
                             temp_values{index} = prob_xu;
                             
                             final_time_input = toc(tempTime1);
@@ -254,13 +259,13 @@ function out = estimate_prob_transition(obj_state_partition,input_partition,...
                             % Printing on the screen
                             if (number_of_points-1)/number_of_inputs < 100
                                 if mod(i1+i2,5) == 0
-                                    PrintEstimateTransitionProb(total_iterations,index,sum_time/sum_it);
+                                    print_estimate_transition_prob(total_iterations,index,sum_time/sum_it);
                                     sum_time = 0;
                                     sum_it = 0;
                                 end
                             else
                                 if mod(i1+i2,15) == 0
-                                    PrintEstimateTransitionProb(total_iterations,index,sum_time/sum_it);
+                                    print_estimate_transition_prob(total_iterations,index,sum_time/sum_it);
                                     sum_time = 0;
                                     sum_it = 0;
                                 end
@@ -485,7 +490,7 @@ function out = estimate_prob_transition(obj_state_partition,input_partition,...
             NotImplemented();
     end
     
-    out = containers.Map(grid_no_inputs,temp_values);
+    out = containers.Map(grid_with_inputs,temp_values);
 
 end
 
@@ -531,82 +536,98 @@ switch type_vector_field
             index = remaining_iterations(1,[index_member_partition,N],1,[]);
             temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
         end
+
+    case 'LTI'
+         Nx1 = size(temp_partition.X1,2); % Number of points in the first dimension
+         Nx2 = size(temp_partition.X1,1); % Number of points in the second dimension
+
+
+         for i = 1:number_of_MC_simulations % iterate over the number of simulations
+             noise = generate_noise_LTI(param.mean_noise,param.chol_cov); % simulates a noise transition
+
+             % Compute the associated element of the partition and store the index
+             temp = state_partition.compute_element_partition(x,u,noise,param);
+             index_member_partition = temp.element_partition;
+
+             index = remaining_iterations(2,[index_member_partition,[Nx1;Nx2]],1,[]); % getting the index of the current state
+             temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
+         end
         
-    case 'ChainInt'
+%     case 'ChainInt'
+%         
+%         Nx1 = size(temp_partition.X1,2); % Number of points in the first dimension
+%         Nx2 = size(temp_partition.X1,1); % Number of points in the second dimension
+%         
+%         
+%         for i = 1:number_of_MC_simulations % iterate over the number of simulations
+%             noise = generateNoise(param,type_vector_field); % simulates a noise transition
+%             
+%             % Compute the associated element of the partition and store the index
+%             temp = state_partition.computeElementPartition(x,u,noise,param);
+%             index_member_partition = temp.elementPartition;
+%             
+%             index = RemainingIterations(2,[index_member_partition,[Nx1;Nx2]],1,[]); % getting the index of the current state
+%             temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
+%         end
         
-        Nx1 = size(temp_partition.X1,2); % Number of points in the first dimension
-        Nx2 = size(temp_partition.X1,1); % Number of points in the second dimension
-        
-        
-        for i = 1:number_of_MC_simulations % iterate over the number of simulations
-            noise = generateNoise(param,type_vector_field); % simulates a noise transition
-            
-            % Compute the associated element of the partition and store the index
-            temp = state_partition.computeElementPartition(x,u,noise,param);
-            index_member_partition = temp.elementPartition;
-            
-            index = RemainingIterations(2,[index_member_partition,[Nx1;Nx2]],1,[]); % getting the index of the current state
-            temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
-        end
-        
-    case 'Fishery'
-        
-        Nx1 = size(temp_partition.X1,2); % Number of points in the first dimension
-        Nx2 = size(temp_partition.X1,1); % Number of points in the second dimension
-        Nx3 = size(temp_partition.X1,3); % Number of points in the third dimension
-        
-        
-        for i = 1:number_of_MC_simulations % iterate over the number of simulations
-            noise = generateNoise(param,type_vector_field); % simulates a noise transition
-            
-            % Compute the associated element of the partition and store the index
-            temp = state_partition.computeElementPartition(x,u,noise,param);
-            index_member_partition = temp.elementPartition;
-            
-            index = RemainingIterations(3,[index_member_partition,[Nx1;Nx2;Nx3]],1,[]); % getting the index of the current state
-            temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
-        end
-        
-    case 'CarPole'
-        
-        Nx1 = size(temp_partition.X1,1); % Number of points in the first dimension
-        Nx2 = size(temp_partition.X1,2); % Number of points in the second dimension
-        Nx3 = size(temp_partition.X1,3); % Number of points in the third dimension
-        Nx4 = size(temp_partition.X1,4); % Number of points in the third dimension
-        
-        
-        for i = 1:number_of_MC_simulations % iterate over the number of simulations
-            noise = generateNoise(param,type_vector_field); % simulates a noise transition
-            
-            % Compute the associated element of the partition and store the index
-            temp = state_partition.computeElementPartition(x,u,noise,param);
-            index_member_partition = temp.elementPartition;
-            
-            index = RemainingIterations(4,[index_member_partition,[Nx1;Nx2;Nx3;Nx4]],1,[]); % getting the index of the current state
-            temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
-        end
-        
-    case 'CarPoleNL'
-        
-        Nx1 = size(temp_partition.X1,1); % Number of points in the first dimension
-        Nx2 = size(temp_partition.X1,2); % Number of points in the second dimension
-        Nx3 = size(temp_partition.X1,3); % Number of points in the third dimension
-        Nx4 = size(temp_partition.X1,4); % Number of points in the third dimension
-        
-        
-        for i = 1:number_of_MC_simulations % iterate over the number of simulations
-            noise = generateNoise(param,type_vector_field); % simulates a noise transition
-            
-            % Compute the associated element of the partition and store the index
-            temp = state_partition.computeElementPartition(x,u,noise,param);
-            index_member_partition = temp.elementPartition;
-            
-            index = RemainingIterations(4,[index_member_partition,[Nx1;Nx2;Nx3;Nx4]],1,[]); % getting the index of the current state
-            temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
-        end
+%     case 'Fishery'
+%         
+%         Nx1 = size(temp_partition.X1,2); % Number of points in the first dimension
+%         Nx2 = size(temp_partition.X1,1); % Number of points in the second dimension
+%         Nx3 = size(temp_partition.X1,3); % Number of points in the third dimension
+%         
+%         
+%         for i = 1:number_of_MC_simulations % iterate over the number of simulations
+%             noise = generateNoise(param,type_vector_field); % simulates a noise transition
+%             
+%             % Compute the associated element of the partition and store the index
+%             temp = state_partition.computeElementPartition(x,u,noise,param);
+%             index_member_partition = temp.elementPartition;
+%             
+%             index = RemainingIterations(3,[index_member_partition,[Nx1;Nx2;Nx3]],1,[]); % getting the index of the current state
+%             temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
+%         end
+%         
+%     case 'CarPole'
+%         
+%         Nx1 = size(temp_partition.X1,1); % Number of points in the first dimension
+%         Nx2 = size(temp_partition.X1,2); % Number of points in the second dimension
+%         Nx3 = size(temp_partition.X1,3); % Number of points in the third dimension
+%         Nx4 = size(temp_partition.X1,4); % Number of points in the third dimension
+%         
+%         
+%         for i = 1:number_of_MC_simulations % iterate over the number of simulations
+%             noise = generateNoise(param,type_vector_field); % simulates a noise transition
+%             
+%             % Compute the associated element of the partition and store the index
+%             temp = state_partition.computeElementPartition(x,u,noise,param);
+%             index_member_partition = temp.elementPartition;
+%             
+%             index = RemainingIterations(4,[index_member_partition,[Nx1;Nx2;Nx3;Nx4]],1,[]); % getting the index of the current state
+%             temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
+%         end
+%         
+%     case 'CarPoleNL'
+%         
+%         Nx1 = size(temp_partition.X1,1); % Number of points in the first dimension
+%         Nx2 = size(temp_partition.X1,2); % Number of points in the second dimension
+%         Nx3 = size(temp_partition.X1,3); % Number of points in the third dimension
+%         Nx4 = size(temp_partition.X1,4); % Number of points in the third dimension
+%         
+%         
+%         for i = 1:number_of_MC_simulations % iterate over the number of simulations
+%             noise = generateNoise(param,type_vector_field); % simulates a noise transition
+%             
+%             % Compute the associated element of the partition and store the index
+%             temp = state_partition.computeElementPartition(x,u,noise,param);
+%             index_member_partition = temp.elementPartition;
+%             
+%             index = RemainingIterations(4,[index_member_partition,[Nx1;Nx2;Nx3;Nx4]],1,[]); % getting the index of the current state
+%             temp_values{index} = temp_values{index} + 1/number_of_MC_simulations;
+%         end
      
     otherwise
-        NotImplemented();
+        not_implemented();
         
 end
 

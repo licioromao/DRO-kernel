@@ -60,6 +60,60 @@ if ~bool_signal
                     not_implemented();
             end
 
+        case 'LTI'
+
+            fprintf('\nComputing value function (without ambiguity)...\n');
+
+            number_of_points = param.number_of_points;
+            time_horizon = param.time_horizon;
+
+            value_func = NoAmbiguityTCLValueFunc(number_of_points,...
+                time_horizon,type_vector_field,param);
+% 
+%                 case 'MomentAmbiguity'
+%                     fprintf('\nComputing value function (moment ambiguity)...\n')
+% 
+%                     number_of_points = param.number_of_points;
+%                     time_horizon = param.time_horizon;
+%                     radius_mean = struct_ambiguity_types.radius_mean;
+%                     radius_variance = struct_ambiguity_types.radius_variance;
+% 
+% 
+%                     value_func = MomentTCLValueFunc(number_of_points,...
+%                                         time_horizon,type_vector_field,...
+%                                             radius_mean,radius_variance,...
+%                                                     param);
+%                 case 'KernelAmbiguity'
+%                     fprintf('\nComputing value function (kernel ambiguity)...\n');
+% 
+%                     number_of_points = param.number_of_points;
+%                     time_horizon = param.time_horizon;
+% 
+%                     radius_ball = struct_ambiguity_types.radius_ball;
+%                     kernel_parameter = struct_ambiguity_types.kernel_parameter;
+%                     type_value_func_computation = struct_ambiguity_types.type_value_func_computation;
+% 
+%                     if strcmp(type_value_func_computation,'KME')
+%                         value_func = KernelTCLValueFunc(number_of_points,time_horizon,...
+%                                                           type_vector_field,radius_ball,...
+%                                                             [],[],...
+%                                                                 type_value_func_computation,param);
+%                     else
+% 
+%                         value_func = KernelTCLValueFunc(number_of_points,time_horizon,...
+%                                                           type_vector_field,radius_ball,...
+%                                                             @GaussianKernel,kernel_parameter,...
+%                                                                 type_value_func_computation,param);
+%                     end
+% 
+%                 case 'KLdivAmbiguity'
+%                     fprintf('\nComputing value function (KL ambiguity)...\n');
+
+%                 otherwise
+%                     not_implemented();
+%             end
+
+
         otherwise
             not_implemented();
     end

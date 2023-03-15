@@ -114,20 +114,35 @@ classdef TwoDimStatePartition < StatePartition
 
             switch obj.type_vector_field % This field is inherited from the parent class
 
-                case 'ChainInt'
+%                 case 'ChainInt'
+% 
+%                     VF = VectorFieldChainInt(current_state,current_input,param);
+%                     VF.Noise = noise;
+%                     next_state = VF.IterateDynamics;
+% 
+%                     temp = obj.get_element_partition(next_state);
+%                     out.element_partition = temp.index;
+%                     out.next_state = obj.get_center_partition(temp.x);
 
-                    VF = VectorFieldChainInt(current_state,current_input,param);
-                    VF.Noise = noise;
-                    next_state = VF.IterateDynamics;
+                case 'LTI'
+
+                    VF = VectorFieldLTI(current_state,current_input,param.A,param.B);
+                    VF.noise = noise;
+                    next_state = VF.iterate_dynamics();
 
                     temp = obj.get_element_partition(next_state);
                     out.element_partition = temp.index;
                     out.next_state = obj.get_center_partition(temp.x);
 
+
                 otherwise
                     not_implemented();
             end
         end
-   
+        
+        function out = get_values(obj)
+            out.type_vector_field = obj.type_vector_field;
+            out.partition = obj.partition;
+        end
     end
 end
