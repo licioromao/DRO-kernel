@@ -678,74 +678,89 @@ switch type_vector_field
         end
         
         out = zeros(number_of_points,1);
-        
-    case 'ChainInt'
-        
+
+    case 'LTI'
         % Size of the state partition
         Nx1 = size(temp_state_partition.X1,2);
         Nx2 = size(temp_state_partition.X1,1);
         
         temp = zeros(Nx1*Nx2,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
         
-        for i = 1:n_core
+        parfor i = 1:n_core
             temp_param = param;
             temp_param.MC = MC_parallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
-            temp(:,i) = RunMonteCarlo(current_state,current_input,state_partition,type_vector_field,temp_param);
+            temp(:,i) = run_monte_carlo(current_state,current_input,state_partition,type_vector_field,temp_param);
         end
         
         out = zeros(Nx1*Nx2,1);
-    
-    case 'Fishery'
-        % Size of the state partition
-        Nx1 = size(temp_state_partition.X1,2);
-        Nx2 = size(temp_state_partition.X1,1);
-        Nx3 = size(temp_state_partition.X1,3);
         
-        temp = zeros(Nx1*Nx2*Nx3,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
-        
-        for i = 1:n_core
-            temp_param = param;
-            temp_param.MC = MC_parallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
-            temp(:,i) = RunMonteCarlo(current_state,current_input,state_partition,type_vector_field,temp_param);
-        end
-        
-        out = zeros(Nx1*Nx2*Nx3,1);
-        
-    case 'CarPole'
-        
-        % Size of the state partition
-        Nx1 = size(temp_state_partition.X1,1);
-        Nx2 = size(temp_state_partition.X1,2);
-        Nx3 = size(temp_state_partition.X1,3);
-        Nx4 = size(temp_state_partition.X1,4);
-        
-        temp = zeros(Nx1*Nx2*Nx3*Nx4,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
-        
-        for i = 1:n_core
-            temp_param = param;
-            temp_param.MC = MC_parallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
-            temp(:,i) = RunMonteCarlo(current_state,current_input,state_partition,type_vector_field,temp_param);
-        end
-        
-        out = zeros(Nx1*Nx2*Nx3*Nx4,1);
-        
-    case 'CarPoleNL'
-        
-         % Size of the state partition
-        Nx1 = size(temp_state_partition.X1,1);
-        Nx2 = size(temp_state_partition.X1,2);
-        Nx3 = size(temp_state_partition.X1,3);
-        Nx4 = size(temp_state_partition.X1,4);
-        
-        temp = zeros(Nx1*Nx2*Nx3*Nx4,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
-        
-        for i = 1:n_core
-            temp_param = param;
-            temp_param.MC = MC_parallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
-            temp(:,i) = RunMonteCarlo(current_state,current_input,state_partition,type_vector_field,temp_param);
-        end
-        
-        out = zeros(Nx1*Nx2*Nx3*Nx4,1);
+%     case 'ChainInt'
+%         
+%         % Size of the state partition
+%         Nx1 = size(temp_state_partition.X1,2);
+%         Nx2 = size(temp_state_partition.X1,1);
+%         
+%         temp = zeros(Nx1*Nx2,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
+%         
+%         for i = 1:n_core
+%             temp_param = param;
+%             temp_param.MC = MC_parallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
+%             temp(:,i) = RunMonteCarlo(current_state,current_input,state_partition,type_vector_field,temp_param);
+%         end
+%         
+%         out = zeros(Nx1*Nx2,1);
+%     
+%     case 'Fishery'
+%         % Size of the state partition
+%         Nx1 = size(temp_state_partition.X1,2);
+%         Nx2 = size(temp_state_partition.X1,1);
+%         Nx3 = size(temp_state_partition.X1,3);
+%         
+%         temp = zeros(Nx1*Nx2*Nx3,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
+%         
+%         for i = 1:n_core
+%             temp_param = param;
+%             temp_param.MC = MC_parallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
+%             temp(:,i) = RunMonteCarlo(current_state,current_input,state_partition,type_vector_field,temp_param);
+%         end
+%         
+%         out = zeros(Nx1*Nx2*Nx3,1);
+%         
+%     case 'CarPole'
+%         
+%         % Size of the state partition
+%         Nx1 = size(temp_state_partition.X1,1);
+%         Nx2 = size(temp_state_partition.X1,2);
+%         Nx3 = size(temp_state_partition.X1,3);
+%         Nx4 = size(temp_state_partition.X1,4);
+%         
+%         temp = zeros(Nx1*Nx2*Nx3*Nx4,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
+%         
+%         for i = 1:n_core
+%             temp_param = param;
+%             temp_param.MC = MC_parallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
+%             temp(:,i) = RunMonteCarlo(current_state,current_input,state_partition,type_vector_field,temp_param);
+%         end
+%         
+%         out = zeros(Nx1*Nx2*Nx3*Nx4,1);
+%         
+%     case 'CarPoleNL'
+%         
+%          % Size of the state partition
+%         Nx1 = size(temp_state_partition.X1,1);
+%         Nx2 = size(temp_state_partition.X1,2);
+%         Nx3 = size(temp_state_partition.X1,3);
+%         Nx4 = size(temp_state_partition.X1,4);
+%         
+%         temp = zeros(Nx1*Nx2*Nx3*Nx4,n_core); % initilizating the variable that contains the intermediate estimates for the transition probabilities
+%         
+%         for i = 1:n_core
+%             temp_param = param;
+%             temp_param.MC = MC_parallel(i); % assigning the correct parameter to be passed onto RunMonteCarlo
+%             temp(:,i) = RunMonteCarlo(current_state,current_input,state_partition,type_vector_field,temp_param);
+%         end
+%         
+%         out = zeros(Nx1*Nx2*Nx3*Nx4,1);
         
         
     otherwise

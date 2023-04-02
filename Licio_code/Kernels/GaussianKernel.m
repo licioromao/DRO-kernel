@@ -51,7 +51,10 @@ switch mode
                 input_2 = input_vector(j,:);
 
                 A(i,j) = exp(-gamma*norm(state_1 - state_2)^2) + ...
-                            exp(-gamma*norm(input_1 - input_2)^2);
+                      exp(-gamma*norm(input_1 - input_2)^2);
+                %0.001*linear_splines(input_1,input_2);   
+                  
+                    %0.001*linear_splines(input_1,input_2);           
             end
         end
         
@@ -60,11 +63,15 @@ switch mode
     case 'KME_2'
         state_1 = x;
         state_2 = y;
-        input_1 = input_vector(1,1);
-        input_2 = input_vector(1,2);
+        input_1 = input_vector(1);
+        input_2 = input_vector(2);
 
-        out =  exp(1)*exp(-gamma*norm(state_1 - state_2)^2) + ...
-            0.001*linear_splines(input_1,input_2);
+        out =  exp(1)*exp(-gamma*norm(state_1 - state_2)^2) ...
+                         + exp(-gamma*norm(input_1 - input_2)^2);
+              % + 0.001*linear_splines(input_1,input_2); 
+                                
+            %0.001*linear_splines(input_1,input_2); 
+             
     otherwise
         error('This mode has not been implemented');
 end
@@ -74,7 +81,7 @@ end
 
 function out = linear_splines(input_1,input_2)
 
-    out = 1 + input_1*input_2 + input_1*input_2*min(input_1,input_2)...
+    out = 1 + input_1'*input_2 + input_1'*input_2*min(input_1,input_2)...
             - ((input_1+input_2)/2)*min(input_1,input_2)^2 + (1/3)*min(input_1,input_2)^3;
 
 end

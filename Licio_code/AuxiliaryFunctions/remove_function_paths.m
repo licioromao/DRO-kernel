@@ -8,6 +8,7 @@ rmpath(strcat(path_project,'/PartitionClassesAndFunctions/'));
 rmpath(strcat(path_project,'/PlotFunctions/'));
 rmpath(strcat(path_project,'/ValueFunctionComputation/'));
 rmpath(strcat(path_project,'/ValueFunctionComputation/TCL_VectorField'));
+rmpath(strcat(path_project,'/ValueFunctionComputation/LTI_VectorField'));
 rmpath(strcat(path_project,'/VectorFields/'));
 
 rmpath(genpath(strcat(path_project,'/Dependencies/')));

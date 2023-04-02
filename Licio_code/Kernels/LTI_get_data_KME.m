@@ -1,5 +1,5 @@
 function [chol_fac,kernel_func,data_KME] = ...
-                    TCL_get_data_KME(obj_state_partition,input_partition...
+                    LTI_get_data_KME(obj_state_partition,input_partition...
                                             ,number_of_points_KME,param)
 
 grid_no_inputs = obj_state_partition.get_values.partition.grid_x;
@@ -14,19 +14,19 @@ input_data = sort(randi(number_state_input_grid,[number_of_points_KME,1]));
 
 data = grid_with_inputs(input_data,:);
 
-y = zeros(number_of_points_KME,1);
+y = zeros(number_of_points_KME,2);
 
 for i = 1:number_of_points_KME
-    temp = VectorFieldTCL(data(i,1),data(i,2),param);
-    noise = generate_noise(param,'TCL');
+    temp = VectorFieldLTI(data(i,1:2)',data(i,3),param.A,param.B);
+    noise = generate_noise_LTI(param.mean_noise,param.chol_cov);
     temp.noise = noise;
     
-    y(i) = temp.iterate_dynamics();
+    y(i,:) = temp.iterate_dynamics()';
 end
 
 data = [data,y]; % Collecting state-input-next_state data
 
-gram_matrix = GaussianKernel(data(:,1),data(:,1),param.kernel_parameter,...
+gram_matrix = GaussianKernel(data(:,1:2),data(:,1:2),param.kernel_parameter,...
                                     [],'KME',data(:,3));
 
 chol_fac = chol(gram_matrix + param.regulariser_param*...
@@ -44,7 +44,7 @@ number_of_points = size(data,1);
 out = zeros(number_of_points,1);
 
 for i=1:number_of_points 
-    out(i) = GaussianKernel(data(i,1),state,kernel_parameter,[],'KME_2',[data(i,3),input]);
+    out(i) = GaussianKernel(data(i,1:2),state,kernel_parameter,[],'KME_2',[data(i,3),input]);
 end
 
 end

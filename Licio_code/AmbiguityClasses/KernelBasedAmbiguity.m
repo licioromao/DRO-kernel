@@ -148,26 +148,44 @@ classdef KernelBasedAmbiguity < DistanceBasedAmbiguity
         end
         
         function obj = solve_optimisation_KME(obj,state_partition,data_KME)
-            
+
             obj.results_optimisation = [];
-            
+
             mod_objective_cost = modify_obj_func(obj.objective_cost,state_partition,...
-                                                    data_KME);
-                
+                data_KME);
+
             temp = (obj.chol_factorization)\(obj.chol_factorization'...
-                                        *obj.kernel_function(obj.current_state,obj.current_input));
-            
+                *obj.kernel_function(obj.current_state,obj.current_input));
+
+%             obj.kernel_function(obj.current_state,obj.current_input)
+%             obj.current_state
+%             obj.current_input
+%             mod_objective_cost'*temp
+
+
             %temp = temp/(abs(temp)); % I AM NOT SURE ABOUT THIS
-            temp = abs(temp)/sum(temp); % I AM NOT SURE ABOUT THIS
+            temp = abs(temp)/sum(abs(temp)); % I AM NOT SURE ABOUT THIS
+            
+            %mod_objective_cost'*temp
 
             %norm_RKHS_mod_objective = sqrt(mod_objective_cost'*obj.chol_factorization'...
-                                        %*obj.chol_factorization*mod_objective_cost)...
-                                        %/norm(obj.chol_factorization'*obj.chol_factorization); % I AM NOT SURE ABOUT THIS
+            %*obj.chol_factorization*mod_objective_cost)...
+            %/norm(obj.chol_factorization'*obj.chol_factorization); % I AM NOT SURE ABOUT THIS
 
+            switch size(data_KME,2)
+                case 3
+                    obj.results_optimisation.opt_obj = max(0,min(1,obj.eta_param*mod_objective_cost'*temp ...
+                                - obj.radius_ball*obj.norm_value_func_RHKS));
 
-            obj.results_optimisation.opt_obj = max(0,min(1,obj.eta_param*mod_objective_cost'*temp ...
-                                                    - obj.radius_ball*obj.norm_value_func_RHKS));
-            
+                case 5
+                    obj.results_optimisation.opt_obj = obj.eta_param*mod_objective_cost'*temp ...
+                                                        - obj.radius_ball*obj.norm_value_func_RHKS;
+                otherwise
+                    not_implemented();
+            end
+            %1/obj.norm_value_func_RHKS*[mod_objective_cost'*temp,obj.norm_value_func_RHKS]
+            %obj.results_optimisation.opt_obj
+            %obj.results_optimisation.opt_obj
         end
     end
 end
@@ -178,12 +196,34 @@ function mod_objective_cost = modify_obj_func(objective_cost,state_partition,dat
     number_of_points_KME = size(data_KME,1);
     mod_objective_cost = zeros(number_of_points_KME,1);
 
-    grid_points_KME = data_KME(:,3);
+    switch size(data_KME,2)
+        case 3
+            grid_points_KME = data_KME(:,1);
 
-    for i=1:number_of_points_KME
-        index_of_point = state_partition.get_element_partition(grid_points_KME(i)).index;
-        mod_objective_cost(i) = objective_cost(index_of_point);
+            for i=1:number_of_points_KME
+                index_of_point = state_partition.get_element_partition(grid_points_KME(i,:)').index;
+
+                mod_objective_cost(i) = objective_cost(index_of_point);
+
+            end
+
+        case 5
+            grid_points_KME = data_KME(:,1:2);
+            grid_x = state_partition.partition.grid_x;
+
+            for i=1:number_of_points_KME
+                temp = state_partition.get_element_partition(grid_points_KME(i,:)');
+                index_of_point = intersect(find(grid_x(:,1) == temp.x(1)),find(grid_x(:,2) == temp.x(2)));
+                mod_objective_cost(i) = objective_cost(index_of_point);
+
+            end
+
+
+        otherwise
+            not_implemented();
     end
+
+    
 end
 
 

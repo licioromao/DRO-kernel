@@ -88,10 +88,12 @@ classdef TwoDimStatePartition < StatePartition
 
             if length(index) ~= 2
                 out.index = [1;1];
+                out.index_grid = 1;
                 out.x = obj.partition.grid_x(1,:)';
             else
                 x_hat = [obj.partition.X1(1,index(1));obj.partition.X2(index(2),1)];
                 out.index = index;
+                out.index_grid = intersect(find(x_hat(1) == obj.partition.grid_x(:,1)),find(x_hat(2) == obj.partition.grid_x(:,2)));
                 out.x = x_hat;
             end
         end

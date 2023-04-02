@@ -1,4 +1,6 @@
-function [] = plot_TCL_results(output_TCL_func,project_path,number_of_MC_simulations)
+function [] = plot_TCL_results(output_TCL_func,project_path,number_of_MC_simulations,save,filename)
+
+path_to = '/Users/licioromao/OneDrive - Nexus365/Postdoc/Papers/Ashish_collaboration/CDC-paper/ACC23_AshishLicio_KernelSafety/Figures/';
 
 add_function_paths(project_path)
 
@@ -51,12 +53,24 @@ if number_of_KME > 0
         name_legend_KME = [name_legend_KME,{sprintf('\\epsilon = %.4f', ...
             eval(results_kernel(i).name).radius_ball)}];
     end
+
+    if ~isfield(param,'kernel_parameter')
+        param.kernel_parameter = eval(results_kernel(i).name).param.kernel_parameter;
+        param.regulariser_param = eval(results_kernel(i).name).param.regulariser_param;
+        param.eta_param = eval(results_kernel(i).name).param.eta_param;
+    end
+
     legend(name_legend_KME)
     box on
     grid on
     text_title = {'Safety probability. Kernel Ambiguity',sprintf('Kernel parameter: %.4f,  Regulariser: %.4f,  Eta:%.4f',...
                                                         param.kernel_parameter,param.regulariser_param,param.eta_param)};
-    title(text_title)
+    if save
+        title(text_title,'Interpreter','latex')
+        individual_plot = gcf;s
+        temp = strcat(path_to,filename,'-all','.eps');
+        exportgraphics(individual_plot,temp)
+    end
 end
 
 % Plotting results from the moment ambiguity
@@ -79,7 +93,16 @@ if number_of_moment > 0
     legend(name_legend_moment)
     box on
     grid on
-    title('Safety probability -- Moment Ambiguity sets')
+    text_title = {'Safety probability -- Moment Ambiguity sets'};
+
+    title(text_title,'Interpreter','latex')
+
+    if save
+        moment_plot = gcf;
+        temp = strcat(path_to,filename,'-moment','.eps');
+        exportgraphics(moment_plot,temp);
+    end
+    
 end
 
 % Performing Monte Carlo simulation of the designed policy, if last
@@ -119,8 +142,13 @@ if ~isempty(number_of_MC_simulations)
         grid on
         text_title = sprintf('Kernel parameter: %.4f,  Regulariser: %.4f,  Eta:%.4f',...
                                                         param.kernel_parameter,param.regulariser_param,param.eta_param);
-        title({'Value function versus empirical value function',text_title});
+        title({'Value function versus empirical value function',text_title},'Interpreter','latex');
 
+        if save
+            all_plot = gcf;
+            temp = strcat(path_to,filename,'-individual-',sprintf('%d',i),'.eps');
+            exportgraphics(all_plot,temp)
+        end
     end
 end
 

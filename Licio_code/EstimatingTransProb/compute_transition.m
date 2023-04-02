@@ -1,4 +1,4 @@
-function param = compute_transition(type_vector_field,number_of_points,...
+function param = compute_transition(type_vector_field,number_of_points,number_of_input_partition,...
                                         number_of_MC_simulations)
 
 switch type_vector_field
@@ -71,7 +71,7 @@ switch type_vector_field
         param.chol_cov = chol(covaraiance_state_noise)';
 
         state_partition = TwoDimStatePartition(param.grid,param.number_of_points,param.safe_set,'LTI');
-        input_partition = linspace(-5,5,20)';
+        input_partition = linspace(-5,5,number_of_input_partition)';
 
         [grid_with_inputs,grid_no_inputs] = state_partition.create_list(input_partition); % List containing labels for the discrete states of the discretazation
 

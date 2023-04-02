@@ -61,14 +61,39 @@ if ~bool_signal
             end
 
         case 'LTI'
+            switch struct_ambiguity_types.name
+                case 'NoAmbiguity'
 
-            fprintf('\nComputing value function (without ambiguity)...\n');
+                    fprintf('\nComputing value function (without ambiguity)...\n');
 
-            number_of_points = param.number_of_points;
-            time_horizon = param.time_horizon;
+                    number_of_points = param.number_of_points;
+                    time_horizon = param.time_horizon;
 
-            value_func = NoAmbiguityTCLValueFunc(number_of_points,...
-                time_horizon,type_vector_field,param);
+                    value_func = NoAmbiguityLTIValueFunc(number_of_points,...
+                        time_horizon,type_vector_field,param);
+                case 'KernelAmbiguity'
+
+                    fprintf('\nComputing value function (kernel ambiguity)...\n');
+
+                    number_of_points = param.number_of_points;
+                    time_horizon = param.time_horizon;
+
+                    radius_ball = struct_ambiguity_types.radius_ball;
+                    %kernel_parameter =
+                    %struct_ambiguity_types.kernel_parameter;  THIS MAY NOT
+                    %                                               BE NECESSARY
+                    type_value_func_computation = struct_ambiguity_types.type_value_func_computation;
+
+                    if strcmp(type_value_func_computation,'KME')
+                        value_func = KernelLTIValueFunc(number_of_points,time_horizon,...
+                                                          type_vector_field,radius_ball,...
+                                                            [],[],...
+                                                                type_value_func_computation,param);
+                    end
+
+                otherwise
+                    not_implemented();
+            end
 % 
 %                 case 'MomentAmbiguity'
 %                     fprintf('\nComputing value function (moment ambiguity)...\n')

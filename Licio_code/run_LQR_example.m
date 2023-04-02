@@ -1,90 +1,85 @@
-clear all
+function out = run_LQR_example(LTI_system,obj_function,param)
+
 add_function_paths(pwd)
 
-% Standard LQR control
-close all
-A = [1,0;1,1]; B = [1;1]; initial_condition = [5;3]; time_horizon = 15;
-Q = eye(2); R = 1;
-number_of_MC_simulations = 100;
+% Defining system's matrices
+A = LTI_system.A;
+B = LTI_system.B;
+initial_condition = LTI_system.initial_condition;
 
-covaraiance_state_noise = randn(2,1);
-mean_add_state_noise = [0;0]; covaraiance_state_noise = covaraiance_state_noise*covaraiance_state_noise' + 0.1*eye(2);
-chol_cov = chol(covaraiance_state_noise)';
+% Time horizon
+time_horizon = param.time_horizon;
 
-%%%%%%%%%%%%%%%% Testing noise function %%%%%%%%%%%%%%%%
+% Objective function
+Q = obj_function.Q; R = obj_function.R;
 
-% m = 100000;
-% temp_noise = zeros(2,m);
-% for i=1:m
-%     temp_noise(:,i) = generate_noise_LTI(mean_add_state_noise,chol_cov);
-% end
-% 
-% estimate_mean = sum(temp_noise,2)/m;
-% estimate_cov = (temp_noise-estimate_mean)*(temp_noise-estimate_mean)'/m;
-% 
-% [estimate_cov,covaraiance_state_noise]
-% 
-% [estimate_mean,mean_add_state_noise]
 
-%%%%%%%%%%%%%%%% END %%%%%%%%%%%%%%%%
+% Parameters defining the ambiguity, etc
+number_of_MC_simulations = param.number_of_MC_simulations;
+mean_add_state_noise = param.mean_noise;
+number_of_points = param.number_of_points;
+number_of_input_partition = param.number_of_input_partition; 
+
+radius_ball = param.radius_ball;
+kernel_parameter = param.kernel_parameter;
+type_value_func_computation = param.type_value_func_computation;
+number_of_points_KME = param.number_of_points_KME;
+regulariser_param = param.regulariser_param;
+eta_param = param.eta_param;
+
+
+chol_cov = chol(param.covaraiance_state_noise)';
 
 discrete_sys = ss(A,B,eye(2),zeros(2,1),-1);
 
-[gain_lqr,solution_ricatti,closed_loop_poles] = lqr(discrete_sys,Q,R,[]);
+[gain_lqr,~,~] = lqr(discrete_sys,Q,R,[]);
 
 LTI_vector_field = VectorFieldLTI(initial_condition,[],A,B);
+out.LTI_sys = LTI_vector_field;
 
-MC_compute_objective_func(LTI_vector_field,gain_lqr,...
+out.avg_obj_func_LQR = MC_compute_objective_func(LTI_vector_field,gain_lqr,...
                                    Q,R,mean_add_state_noise,chol_cov,...
-                                        time_horizon,number_of_MC_simulations)
+                                        time_horizon,number_of_MC_simulations);
 
 
 %%%%%%%%%%%%%%%% Generating trajectories %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
-temp = generate_trajectory(LTI_vector_field,gain_lqr,mean_add_state_noise,chol_cov,time_horizon);
-temp2 = generate_trajectory(LTI_vector_field,gain_lqr,mean_add_state_noise,chol_cov,time_horizon);
+out.LQR_closed_loop_trajectory = generate_trajectory(LTI_vector_field,gain_lqr,mean_add_state_noise,chol_cov,time_horizon);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%  END  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+        
 
-number_of_points = [8,8];
-number_of_MC_simulation = 90;
-number_of_input_partition = 50;         
+internal_param = compute_transition('LTI',...
+                                number_of_points,number_of_input_partition,number_of_MC_simulations); % Computing the transition probability
 
+internal_param.time_horizon = int16(time_horizon);
+internal_param.outer_loop_info = [];
+internal_param.Q = Q;
 
-
-param = compute_transition('LTI',...
-                                number_of_points,number_of_input_partition,number_of_MC_simulation); % Computing the transition probability
-
-
-param.time_horizon = int16(time_horizon);
-param.outer_loop_info = [];
-param.Q = Q;
-
-state_partition = TwoDimStatePartition(param.grid,number_of_points,param.safe_set,'LTI');
+state_partition = TwoDimStatePartition(internal_param.grid,number_of_points,internal_param.safe_set,'LTI');
 input_partition = linspace(-5,5,number_of_input_partition)';
+
+out.state_partition = state_partition;
+out.input_partition = input_partition;
 
 struct_ambiguity_types.name = 'NoAmbiguity';
 
 time_kernel = tic;
 value_func_no_ambiguity = main_value_function_iteration(state_partition,...
     input_partition,'LTI',struct_ambiguity_types,...
-    exist('value_func_moment','var'),param);
+    exist('value_func_moment','var'),internal_param);
 
 value_func_no_ambiguity.time = toc(time_kernel);
 
-%%%%%%%%% Generating trajectory non-ambiguity %%%%%%%%%%%%%%%%%%%%%%%%%%% 
+out.value_func_no_ambiguity = value_func_no_ambiguity;
 
-temp2 = generate_trajectory_DP(state_partition,input_partition,LTI_vector_field,...
+%%%%%%%%%%%%%%%% Generating trajectories no-ambiguity %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
+out.No_ambiguity_closed_loop_trajectory = generate_trajectory_DP(state_partition,input_partition,LTI_vector_field,...
                                     value_func_no_ambiguity.opt_input(:,1),mean_add_state_noise,chol_cov,time_horizon);
 
-%%%%%%%%%%%%%%% Kernel parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-radius_ball = 0.1;
-kernel_parameter = 1e-2;
-type_value_func_computation = 'KME';
-number_of_points_KME = 200;
-regulariser_param = 500;
-eta_param = 1;
+%%%%%%%%%%%%%%% Kernel parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 struct_ambiguity_types.name = 'KernelAmbiguity';
 struct_ambiguity_types.radius_ball = radius_ball;
@@ -94,19 +89,19 @@ struct_ambiguity_types.number_of_samples_KME = number_of_points_KME;
 struct_ambiguity_types.regulariser_param = regulariser_param;
 struct_ambiguity_types.eta_param = eta_param;
 
-param.kernel_parameter = kernel_parameter;
-param.regulariser_param = regulariser_param;
+internal_param.kernel_parameter = kernel_parameter;
+internal_param.regulariser_param = regulariser_param;
 
 
 [chol_fac,kernel_func,data_KME] = LTI_get_data_KME(state_partition,input_partition,...
-    number_of_points_KME,param);
+    number_of_points_KME,internal_param);
 
 
-param.chol_fac = chol_fac;
-param.number_of_points_KME = number_of_points_KME;
-param.kernel_func = kernel_func;
-param.data_KME = data_KME;
-param.eta_param = eta_param;
+internal_param.chol_fac = chol_fac;
+internal_param.number_of_points_KME = number_of_points_KME;
+internal_param.kernel_func = kernel_func;
+internal_param.data_KME = data_KME;
+internal_param.eta_param = eta_param;
 
 outer_loop_info.string_ambiguity{1}.name = 'KernelAmbiguity';
 outer_loop_info.type_vector_field = 'LTI';
@@ -114,26 +109,27 @@ outer_loop_info.total_iteration = 1;
 outer_loop_info.current_iteration = 1;
 outer_loop_info.time_iteration = 0;
 
-param.outer_loop_info = outer_loop_info;
+internal_param.outer_loop_info = outer_loop_info;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 time_kernel = tic;
 value_func_kernel = main_value_function_iteration(state_partition,...
     input_partition,'LTI',struct_ambiguity_types,...
-    exist('value_func_moment','var'),param);
+    exist('value_func_moment','var'),internal_param);
 
 value_func_kernel.time = toc(time_kernel);
+
+out.value_func_kernel = value_func_kernel;
 
 %%%%%%%%%%%%%%%%%%%% Generating trajectory with Kernel policy %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-temp3 = generate_trajectory_DP(state_partition,input_partition,LTI_vector_field,...
+out.kernel_closed_loop_trajectory = generate_trajectory_DP(state_partition,input_partition,LTI_vector_field,...
                                     value_func_kernel.opt_input(:,1),mean_add_state_noise,chol_cov,time_horizon);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+end
 
-save test_LQR
 
 %%%%%%%%%%%%%%%%%%%%% ADDITIONAL FUNCTIONS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -199,7 +195,7 @@ function obj_func = compute_objective_func(Q,R,states_trajectories,control_actio
 
     for i =1:time_horizon
         obj_func = obj_func + (states_trajectories(i,:)*Q*states_trajectories(i,:)' ...
-                                    + control_actions(i,:)*R*control_actions(i,:))/time_horizon;
+                                    + control_actions(i,:)*R*control_actions(i,:));
     end
 
 
